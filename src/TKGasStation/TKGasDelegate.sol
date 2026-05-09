@@ -25,6 +25,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, I
     error ApprovalTo0Failed();
     error ApprovalReturnFalse();
     error InvalidOffset();
+    error NotGasStation();
 
     bytes4 internal constant APPROVAL_FAILED_SELECTOR = 0x8164f842;
     bytes4 internal constant APPROVAL_RETURN_FALSE_SELECTOR = 0xf572481d;
@@ -95,9 +96,14 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, I
         return _getStateStorage().expiredSessionCounters[bytes16(_counter)];
     }
 
+
+    address public immutable GAS_STATION; 
+
     /// @notice Initializes the TKGasDelegate contract
     /// @dev Sets up EIP-712 domain separator with name "TKGasDelegate" and version "1"
-    constructor() EIP712() {}
+    constructor(address _gasStationAddress) EIP712() {
+        GAS_STATION = _gasStationAddress;
+    }
 
     fallback(bytes calldata) external returns (bytes memory) {
         bytes1 functionSelector = bytes1(msg.data[1]);
@@ -337,12 +343,20 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, I
 
     // Internal helpers to centralize common validation logic
 
+    function _validateCalledFromGasStation() internal view {
+        if(GAS_STATION != address(0) || GAS_STATION != msg.sender) { // allow if set to 0 address that any place can call this, otherwise limit to the gas station
+            revert NotGasStation();
+        }
+    }
+
     function _validateExecute(bytes32 _hash, bytes calldata _signature, bytes calldata _nonceBytes) internal {
+        _validateCalledFromGasStation();
         _requireSelf(_hash, _signature);
         _consumeNonce(_nonceBytes);
     }
 
     function _validateSession(bytes32 _hash, bytes calldata _signature, bytes calldata _counterBytes) internal view {
+        _validateCalledFromGasStation();
         _requireSelf(_hash, _signature);
         _requireCounter(_counterBytes);
     }
