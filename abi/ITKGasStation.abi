@@ -1,7 +1,7 @@
 [
   {
     "type": "function",
-    "name": "TK_GAS_DELEGATE",
+    "name": "tkGasDelegate",
     "inputs": [],
     "outputs": [
       {

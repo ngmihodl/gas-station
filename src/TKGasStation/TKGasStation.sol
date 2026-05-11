@@ -13,20 +13,21 @@ contract TKGasStation is ITKGasStation, Ownable {
     error NotDelegated();
     error InvalidFunctionSelector();
     error ExecutionFailed();
-    error Frozen();
 
-    address public immutable TK_GAS_DELEGATE;
-    bool public frozen;
+    address public override tkGasDelegate;
 
     /// @notice Initializes the gas station with the TKGasDelegate implementation address
     /// @param _tkGasDelegate Address of the TKGasDelegate contract that delegated EOAs point to
     constructor(address _tkGasDelegate, address _owner) {
         _initializeOwner(_owner);
-        TK_GAS_DELEGATE = _tkGasDelegate;
-        frozen = false; // unneeded, just to show for the poc
+        tkGasDelegate = _tkGasDelegate;
     }
 
-    fallback(bytes calldata data) external notFrozen returns (bytes memory) {
+    function setDelegate(address _delegate) external onlyOwner() {
+        tkGasDelegate = _delegate;
+    }
+
+    fallback(bytes calldata data) external returns (bytes memory) {
         address target;
         assembly {
             target := shr(96, calldataload(add(data.offset, 1)))
@@ -52,18 +53,11 @@ contract TKGasStation is ITKGasStation, Ownable {
         revert InvalidFunctionSelector();
     }
 
-    modifier notFrozen() {
-        if (frozen) {
-            revert Frozen();
-        }
-        _;
-    }
-
-    function SetFreeze(bool _freeze) external onlyOwner {
-        frozen = _freeze;
-    }
-
     function _isDelegated(address _targetEoA) internal view returns (bool) {
+        if(tkGasDelegate == address(0)){
+            return false; // no delegate exists currently. Contract stopped 
+        }
+
         uint256 size;
         assembly {
             size := extcodesize(_targetEoA)
@@ -88,7 +82,7 @@ contract TKGasStation is ITKGasStation, Ownable {
             delegatedTo := shr(96, mload(add(code, 0x23)))
         }
 
-        return delegatedTo == TK_GAS_DELEGATE;
+        return delegatedTo == tkGasDelegate;
     }
 
     // Execute functions
@@ -101,7 +95,6 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @return The return data from the executed call
     function executeReturns(address _target, address _to, uint256 _ethAmount, bytes calldata _data)
         external
-        notFrozen
         returns (bytes memory)
     {
         if (!_isDelegated(_target)) {
@@ -117,7 +110,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _to The contract or address to call
     /// @param _ethAmount The amount of ETH to send with the call (in wei)
     /// @param _data The encoded function call data including signature, nonce, deadline, and arguments
-    function execute(address _target, address _to, uint256 _ethAmount, bytes calldata _data) external notFrozen {
+    function execute(address _target, address _to, uint256 _ethAmount, bytes calldata _data) external {
         if (!_isDelegated(_target)) {
             revert NotDelegated();
         }
@@ -143,7 +136,7 @@ contract TKGasStation is ITKGasStation, Ownable {
         address _spender,
         uint256 _approveAmount,
         bytes calldata _data
-    ) external notFrozen returns (bytes memory) {
+    ) external returns (bytes memory) {
         if (!_isDelegated(_target)) {
             revert NotDelegated();
         }
@@ -169,7 +162,7 @@ contract TKGasStation is ITKGasStation, Ownable {
         address _spender,
         uint256 _approveAmount,
         bytes calldata _data
-    ) external notFrozen {
+    ) external {
         if (!_isDelegated(_target)) {
             revert NotDelegated();
         }
@@ -185,7 +178,6 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @return Array of return data from each executed call, in the same order as _calls
     function executeBatchReturns(address _target, IBatchExecution.Call[] calldata _calls, bytes calldata _data)
         external
-        notFrozen
         returns (bytes[] memory)
     {
         if (!_isDelegated(_target)) {
@@ -202,7 +194,6 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _data The encoded signature, nonce, and deadline for batch authorization
     function executeBatch(address _target, IBatchExecution.Call[] calldata _calls, bytes calldata _data)
         external
-        notFrozen
     {
         if (!_isDelegated(_target)) {
             revert NotDelegated();
@@ -215,7 +206,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _targetEoA The delegated EOA address whose nonce will be burned
     /// @param _signature The signature authorizing the nonce burn operation
     /// @param _nonce The nonce value to invalidate
-    function burnNonce(address _targetEoA, bytes calldata _signature, uint128 _nonce) external notFrozen {
+    function burnNonce(address _targetEoA, bytes calldata _signature, uint128 _nonce) external {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
         }
@@ -228,7 +219,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @dev The nonce increments with each executed transaction to prevent replay attacks
     /// @param _targetEoA The delegated EOA address to query
     /// @return The current nonce value (uint128)
-    function getNonce(address _targetEoA) external view notFrozen returns (uint128) {
+    function getNonce(address _targetEoA) external view returns (uint128) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
         }
@@ -236,11 +227,12 @@ contract TKGasStation is ITKGasStation, Ownable {
         return nonce;
     }
 
-    /// @notice Checks if an address is properly delegated to the TK_GAS_DELEGATE
-    /// @dev Verifies the EOA has the correct delegation bytecode (0xef0100 prefix + TK_GAS_DELEGATE address)
+    /// @notice Checks if an address is properly delegated to `tkGasDelegate`
+    /// @dev Verifies the EOA has the correct delegation bytecode (0xef0100 prefix + `tkGasDelegate` address)
+
     /// @param _targetEoA The address to check for delegation status
-    /// @return true if the address is delegated to TK_GAS_DELEGATE, false otherwise
-    function isDelegated(address _targetEoA) external view notFrozen returns (bool) {
+    /// @return true if the address is delegated to `tkGasDelegate`, false otherwise
+    function isDelegated(address _targetEoA) external view returns (bool) {
         return _isDelegated(_targetEoA);
     }
 
@@ -253,7 +245,6 @@ contract TKGasStation is ITKGasStation, Ownable {
     function validateSignature(address _targetEoA, bytes32 _hash, bytes calldata _signature)
         external
         view
-        notFrozen
         returns (bool)
     {
         if (!_isDelegated(_targetEoA)) {
@@ -279,7 +270,7 @@ contract TKGasStation is ITKGasStation, Ownable {
         address _outputContract,
         uint256 _ethAmount,
         bytes calldata _arguments
-    ) external view notFrozen returns (bytes32) {
+    ) external view returns (bytes32) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
         }
@@ -291,7 +282,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _targetEoA The delegated EOA whose nonce will be burned
     /// @param _nonce The nonce value to burn
     /// @return The EIP-712 compliant hash to be signed
-    function hashBurnNonce(address _targetEoA, uint128 _nonce) external view notFrozen returns (bytes32) {
+    function hashBurnNonce(address _targetEoA, uint128 _nonce) external view returns (bytes32) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
         }
@@ -320,7 +311,7 @@ contract TKGasStation is ITKGasStation, Ownable {
         address _outputContract,
         uint256 _ethAmount,
         bytes calldata _arguments
-    ) external view notFrozen returns (bytes32) {
+    ) external view returns (bytes32) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
         }
@@ -343,7 +334,7 @@ contract TKGasStation is ITKGasStation, Ownable {
         uint32 _deadline,
         address _sender,
         address _outputContract
-    ) external view notFrozen returns (bytes32) {
+    ) external view returns (bytes32) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
         }
@@ -360,7 +351,6 @@ contract TKGasStation is ITKGasStation, Ownable {
     function hashArbitrarySessionExecution(address _targetEoA, uint128 _counter, uint32 _deadline, address _sender)
         external
         view
-        notFrozen
         returns (bytes32)
     {
         if (!_isDelegated(_targetEoA)) {
@@ -381,7 +371,7 @@ contract TKGasStation is ITKGasStation, Ownable {
         uint128 _nonce,
         uint32 _deadline,
         IBatchExecution.Call[] calldata _calls
-    ) external view notFrozen returns (bytes32) {
+    ) external view returns (bytes32) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
         }
@@ -393,7 +383,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _targetEoA The delegated EOA whose session counter will be burned
     /// @param _counter The session counter value to burn
     /// @return The EIP-712 compliant hash to be signed
-    function hashBurnSessionCounter(address _targetEoA, uint128 _counter) external view notFrozen returns (bytes32) {
+    function hashBurnSessionCounter(address _targetEoA, uint128 _counter) external view returns (bytes32) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
         }

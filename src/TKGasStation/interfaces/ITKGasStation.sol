@@ -9,7 +9,7 @@ import {IBatchExecution} from "./IBatchExecution.sol";
 interface ITKGasStation is IBatchExecution {
     /// @notice Returns the address of the TKGasDelegate implementation
     /// @return The address of the TKGasDelegate contract
-    function TK_GAS_DELEGATE() external view returns (address);
+    function tkGasDelegate() external view returns (address);
 
     // Execute functions
     /// @notice Executes a transaction on behalf of a delegated EOA and returns the result
@@ -94,7 +94,7 @@ interface ITKGasStation is IBatchExecution {
     /// @return The current nonce value
     function getNonce(address _targetEoA) external view returns (uint128);
 
-    /// @notice Checks if an address is properly delegated to the TK_GAS_DELEGATE
+    /// @notice Checks if an address is properly delegated to `tkGasDelegate`
     /// @param _targetEoA The address to check for delegation status
     /// @return true if the address is delegated, false otherwise
     function isDelegated(address _targetEoA) external view returns (bool);

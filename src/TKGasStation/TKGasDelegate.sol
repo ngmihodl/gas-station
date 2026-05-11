@@ -342,11 +342,13 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, I
     }
 
     // Internal helpers to centralize common validation logic
+    /// @dev If the gas station is set to 0, then anything can be the gas station
 
     function _validateCalledFromGasStation() internal view {
-        if(GAS_STATION != address(0) || GAS_STATION != msg.sender) { // allow if set to 0 address that any place can call this, otherwise limit to the gas station
-            revert NotGasStation();
+        if (GAS_STATION == address(0) || msg.sender == GAS_STATION) {
+            return;
         }
+        revert NotGasStation();
     }
 
     function _validateExecute(bytes32 _hash, bytes calldata _signature, bytes calldata _nonceBytes) internal {

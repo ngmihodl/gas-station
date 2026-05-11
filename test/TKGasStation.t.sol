@@ -20,7 +20,7 @@ contract TKGasStationTest is Test {
 
     function setUp() public {
         tkGasDelegate = new MockDelegate();
-        tkGasStation = new TKGasStation(address(tkGasDelegate));
+        tkGasStation = new TKGasStation(address(tkGasDelegate), address(this));
         user = vm.addr(USER_PRIVATE_KEY);
         paymaster = makeAddr("paymaster");
 
@@ -70,7 +70,7 @@ contract TKGasStationTest is Test {
     }
 
     function testInit() public view {
-        assertTrue(tkGasStation.TK_GAS_DELEGATE() == address(tkGasDelegate));
+        assertTrue(tkGasStation.tkGasDelegate() == address(tkGasDelegate));
     }
 
     function testERC20Transfer() public {

@@ -14,19 +14,22 @@ contract DeployTKGasStation is Script {
 
     function run() external {
         uint256 _deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address _delegate = vm.envAddress("TK_GAS_DELEGATE");
-        bytes32 _salt = 0x0000000000000000000000000000000000000000000000000000004761737379; 
+        address _owner = vm.addr(_deployerPrivateKey);
+        address _delegate = address(0);
+        bytes32 _salt = 0x0000000000000000000000000000000000000000000000000000004761737379;
 
         vm.startBroadcast(_deployerPrivateKey);
 
-        // Get the creation code with constructor arguments
+        // Delegate starts unset (0); owner is the broadcast account. Set delegate later via onlyOwner.
         bytes memory _creationCode = type(TKGasStation).creationCode;
-        bytes memory _constructorArgs = abi.encode(_delegate);
+        bytes memory _constructorArgs = abi.encode(_delegate, _owner);
         bytes memory _initCode = abi.encodePacked(_creationCode, _constructorArgs);
 
         // Deploy via ImmutableCreate2Factory (anyone can deploy to this address with the same salt)
         IImmutableCreate2Factory _factory = IImmutableCreate2Factory(IMMUTABLE_CREATE2_FACTORY);
         address _station = _factory.safeCreate2(_salt, _initCode);
+        console2.log("TKGasStation owner:", _owner);
+        console2.log("TKGasStation tkGasDelegate (initial):", _delegate);
         console2.log("TKGasStation deployed at:", _station);
 
         vm.stopBroadcast();
