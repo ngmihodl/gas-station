@@ -246,13 +246,6 @@ contract TKGasStationTest is Test {
         success; // Silence unused variable warning
     }
 
-    function testFallbackInvalidFunctionSelectorRevert() public {
-        // Test fallback with invalid function selector
-        vm.expectRevert();
-        (bool success,) = address(tkGasStation).call(abi.encodePacked(bytes1(0x00), user, bytes1(0x80))); // Invalid selector
-        success; // Silence unused variable warning
-    }
-
     // Tests for newly implemented no-return functions
     function testApproveThenExecuteNoReturn() public {
         console.log("=== TESTING approveThenExecuteNoReturn ===");

@@ -402,125 +402,6 @@ contract ApproveThenExecuteTest is TKGasDelegateTestBase {
         MockDelegate(user).approveThenExecute(executeData);
     }
 
-    function testFallbackExecutionNoReturn() public {
-        uint256 swapAmount = 100 * 10 ** 18;
-        uint256 expectedOutput = 95 * 10 ** 18; // 5% slippage
-
-        MockDelegate(user).spoof_Nonce(5000);
-
-        uint128 nonce = MockDelegate(user).nonce();
-
-        bytes memory swapData = abi.encodeWithSelector(
-            mockSwap.mockSwap.selector, address(tokenA), address(tokenB), swapAmount, expectedOutput
-        );
-
-        // Create the approve then execute signature
-        bytes memory signature = _signApproveThenExecute(
-            USER_PRIVATE_KEY,
-            user,
-            nonce,
-            uint32(block.timestamp + 86400),
-            address(tokenA),
-            address(mockSwap),
-            swapAmount,
-            address(mockSwap),
-            0,
-            swapData
-        );
-
-        bytes memory fallbackExecuteData = _constructFallbackCalldata(
-            0x10,
-            signature,
-            nonce,
-            uint32(block.timestamp + 86400),
-            abi.encodePacked(
-                address(tokenA), address(mockSwap), swapAmount, address(mockSwap), _fallbackEncodeEth(0), swapData
-            )
-        );
-
-        // Execute approve then execute
-        bool success;
-        vm.prank(paymaster);
-        uint256 gasBefore = gasleft();
-        (success,) = user.call(fallbackExecuteData);
-        uint256 gasUsed = gasBefore - gasleft();
-        vm.stopPrank();
-
-        // Assertions
-        assertTrue(success);
-        assertEq(tokenA.balanceOf(user), 900 * 10 ** 18); // 1000 - 100
-        assertEq(tokenB.balanceOf(user), 1095 * 10 ** 18); // 1000 + 95
-        assertEq(tokenA.balanceOf(address(mockSwap)), 10100 * 10 ** 18); // 10000 + 100
-        assertEq(tokenB.balanceOf(address(mockSwap)), 9905 * 10 ** 18); // 10000 - 95
-
-        uint128 currentNonce = MockDelegate(user).nonce();
-        assertEq(currentNonce, nonce + 1);
-
-        console.log("=== Approve Then Execute Swap Gas ===");
-        console.log("Total Gas Used: %s", gasUsed);
-    }
-
-    function testFallbackExecutionWithReturn() public {
-        uint256 swapAmount = 100 * 10 ** 18;
-        uint256 expectedOutput = 95 * 10 ** 18; // 5% slippage
-
-        MockDelegate(user).spoof_Nonce(5000);
-
-        uint128 nonce = MockDelegate(user).nonce();
-
-        bytes memory swapData = abi.encodeWithSelector(
-            mockSwap.mockSwap.selector, address(tokenA), address(tokenB), swapAmount, expectedOutput
-        );
-
-        // Create the approve then execute signature
-        bytes memory signature = _signApproveThenExecute(
-            USER_PRIVATE_KEY,
-            user,
-            nonce,
-            uint32(block.timestamp + 86400),
-            address(tokenA),
-            address(mockSwap),
-            swapAmount,
-            address(mockSwap),
-            0,
-            swapData
-        );
-
-        bytes memory fallbackExecuteData = _constructFallbackCalldata(
-            0x11,
-            signature,
-            nonce,
-            uint32(block.timestamp + 86400),
-            abi.encodePacked(
-                address(tokenA), address(mockSwap), swapAmount, address(mockSwap), _fallbackEncodeEth(0), swapData
-            )
-        );
-
-        // Execute approve then execute
-        bool success;
-        bytes memory result;
-        vm.prank(paymaster);
-        uint256 gasBefore = gasleft();
-        (success, result) = user.call(fallbackExecuteData);
-        uint256 gasUsed = gasBefore - gasleft();
-        vm.stopPrank();
-
-        // Assertions
-        assertTrue(success);
-        assertEq(tokenA.balanceOf(user), 900 * 10 ** 18); // 1000 - 100
-        assertEq(tokenB.balanceOf(user), 1095 * 10 ** 18); // 1000 + 95
-        assertEq(tokenA.balanceOf(address(mockSwap)), 10100 * 10 ** 18); // 10000 + 100
-        assertEq(tokenB.balanceOf(address(mockSwap)), 9905 * 10 ** 18); // 10000 - 95
-        uint256 returnedAmount = abi.decode(result, (uint256));
-        assertEq(returnedAmount, expectedOutput);
-
-        uint128 currentNonce = MockDelegate(user).nonce();
-        assertEq(currentNonce, nonce + 1);
-
-        console.log("=== Approve Then Execute Swap Gas ===");
-        console.log("Total Gas Used: %s", gasUsed);
-    }
-
     // ========== PARAMETERIZED VERSIONS ==========
 
     function testApproveThenExecuteParameterizedNoReturn_Succeeds() public {
@@ -830,7 +711,7 @@ contract ApproveThenExecuteTest is TKGasDelegateTestBase {
             address(mockSwap),
             swapAmount,
             address(mockSwap),
-            _fallbackEncodeEth(0),
+            uint80(0),
             swapData
         );
 
@@ -952,48 +833,6 @@ contract ApproveThenExecuteTest is TKGasDelegateTestBase {
         MockDelegate(user).approveThenExecute(
             address(mockSwap), 0, address(badToken), address(mockSwap), swapAmount, data
         );
-        vm.stopPrank();
-    }
-
-    function testFallbackApproveThenExecute_ApproveFalse_Reverts() public {
-        MockERC20ApproveNotRevert badToken = new MockERC20ApproveNotRevert("Bad Token", "BAD");
-        badToken.mint(user, 1000 * 10 ** 18);
-        badToken.setApproveAllowed(false); // Make approve return false
-
-        uint256 swapAmount = 100 * 10 ** 18;
-        uint128 nonce = MockDelegate(user).nonce();
-
-        bytes memory swapData = abi.encodeWithSelector(
-            mockSwap.mockSwap.selector, address(badToken), address(tokenB), swapAmount, 95 * 10 ** 18
-        );
-
-        bytes memory signature = _signApproveThenExecute(
-            USER_PRIVATE_KEY,
-            user,
-            nonce,
-            uint32(block.timestamp + 86400),
-            address(badToken),
-            address(mockSwap),
-            swapAmount,
-            address(mockSwap),
-            0,
-            swapData
-        );
-
-        bytes memory fallbackData = _constructFallbackCalldata(
-            bytes1(0x10), // approveThenExecute no return
-            signature,
-            nonce,
-            uint32(block.timestamp + 86400),
-            abi.encodePacked(
-                address(badToken), address(mockSwap), swapAmount, address(mockSwap), _fallbackEncodeEth(0), swapData
-            )
-        );
-
-        vm.prank(paymaster);
-        vm.expectRevert(bytes4(keccak256("ApprovalReturnFalse()")));
-        /* solc-disable-next-line */
-        address(MockDelegate(user)).call(fallbackData);
         vm.stopPrank();
     }
 }

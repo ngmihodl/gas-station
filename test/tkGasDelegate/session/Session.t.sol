@@ -154,61 +154,6 @@ contract SessionTest is TKGasDelegateBase {
         vm.stopPrank();
     }
 
-    function testSessionExecuteFallbackNoReturn() public {
-        mockToken.mint(user, 10 * 10 ** 18);
-        address receiver = makeAddr("receiver");
-
-        uint128 counter = 1; // Use fixed counter value
-        uint32 deadline = uint32(block.timestamp + 1 days);
-        bytes memory signature =
-            _signSessionExecuteWithSender(USER_PRIVATE_KEY, user, counter, deadline, paymaster, address(mockToken));
-
-        bytes memory args = abi.encodeWithSelector(mockToken.transfer.selector, receiver, 5 * 10 ** 18);
-
-        bytes memory data = _constructSessionFallbackCalldata(
-            bytes1(0x30),
-            signature,
-            counter,
-            deadline,
-            abi.encodePacked(address(mockToken), _fallbackEncodeEth(0), args)
-        );
-
-        vm.prank(paymaster);
-        (bool success,) = user.call(data);
-        vm.stopPrank();
-
-        assertTrue(success);
-        assertEq(mockToken.balanceOf(receiver), 5 * 10 ** 18);
-    }
-
-    function testSessionExecuteFallbackWithReturn() public {
-        mockToken.mint(user, 10 * 10 ** 18);
-        address receiver = makeAddr("receiver");
-
-        uint128 counter = 1; // Use fixed counter value
-        uint32 deadline = uint32(block.timestamp + 1 days);
-        bytes memory signature =
-            _signSessionExecuteWithSender(USER_PRIVATE_KEY, user, counter, deadline, paymaster, address(mockToken));
-
-        bytes memory args = abi.encodeWithSelector(mockToken.transfer.selector, receiver, 5 * 10 ** 18);
-
-        bytes memory data = _constructSessionFallbackCalldata(
-            bytes1(0x31),
-            signature,
-            counter,
-            deadline,
-            abi.encodePacked(address(mockToken), _fallbackEncodeEth(0), args)
-        );
-
-        vm.prank(paymaster);
-        (bool success, bytes memory result) = user.call(data);
-        vm.stopPrank();
-
-        assertTrue(success);
-        assertEq(abi.decode(result, (bool)), true);
-        assertEq(mockToken.balanceOf(receiver), 5 * 10 ** 18);
-    }
-
     // ========== PARAMETERIZED VERSIONS ==========
 
     function testSessionExecuteParameterizedReturns_Succeeds() public {

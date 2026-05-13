@@ -11,7 +11,6 @@ import {IBatchExecution} from "./interfaces/IBatchExecution.sol";
 /// @dev This contract acts as an intermediary that validates delegated EOAs and forwards execution calls to TKGasDelegate
 contract TKGasStation is ITKGasStation, Ownable {
     error NotDelegated();
-    error InvalidFunctionSelector();
     error ExecutionFailed();
 
     address public override tkGasDelegate;
@@ -25,32 +24,6 @@ contract TKGasStation is ITKGasStation, Ownable {
 
     function setDelegate(address _delegate) external onlyOwner() {
         tkGasDelegate = _delegate;
-    }
-
-    fallback(bytes calldata data) external returns (bytes memory) {
-        address target;
-        assembly {
-            target := shr(96, calldataload(add(data.offset, 1)))
-        }
-        if (!_isDelegated(target)) {
-            revert NotDelegated();
-        }
-
-        if (bytes1(data[21]) == 0x00) {
-            // check if the first byte is 0x00
-            bytes1 functionSelector = bytes1(data[22] & 0xf0); // mask the last nibble
-
-            // only allow execute functions, no session functions
-            if (functionSelector == 0x00 || functionSelector == 0x10 || functionSelector == 0x20) {
-                (bool success, bytes memory result) = target.call(data[21:]);
-                if (success) {
-                    return result;
-                }
-                revert ExecutionFailed();
-            }
-        }
-
-        revert InvalidFunctionSelector();
     }
 
     function _isDelegated(address _targetEoA) internal view returns (bool) {
