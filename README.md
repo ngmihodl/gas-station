@@ -127,16 +127,23 @@ Create the file
 cp ./env.example ./.env
 ```
 
-In the file add your keys:
+In the file add your keys (and contract addresses **after** you deploy — see step 5):
+
 ```
 PRIVATE_KEY=your_private_key_here
 
 # API Key for contract verification (works for both Base and Ethereum)
 ETHERSCAN_API_KEY=your_etherscan_api_key_here
+
+# Filled in order when using the per-step scripts (not needed for the combined script):
+# 1) After deploying the gas station — required before `DeployTKGasDelegate`
+TK_GAS_STATION=
+# 2) After deploying the delegate — required before `SetGasStationDelegate`
+TK_GAS_DELEGATE=
 ```
 
 
-5. Install and deploy
+5. Install, build, and deploy
 
 ``` 
 cd ./gas-station
@@ -144,11 +151,40 @@ cd ./gas-station
 forge install
 
 forge build
+```
 
-forge script script/DeployTKGasDelegate.s.sol:DeployTKGasDelegate --rpc-url <networkName> --broadcast --verify
+Deploy using **either** the combined script (simplest) **or** the three-step flow.
 
+**Option A — combined script (recommended)**  
+Deploys the gas station (CREATE2, owner-scoped salt), the delegate bound to that station, and calls `setDelegate` in one broadcast. Copy the logged lines into `.env` for other tooling.
+
+```
+forge script script/DeployTKGasStationAndDelegate.s.sol:DeployTKGasStationAndDelegate --rpc-url <networkName> --broadcast --verify
+```
+
+**Option B — manual scripts**  
+Order matters: station first, then delegate, then link.
+
+1. Deploy `TKGasStation` with `tkGasDelegate` initially unset (`address(0)`):
+
+```
 forge script script/DeployTKGasStation.s.sol:DeployTKGasStation --rpc-url <networkName> --broadcast --verify
-``` 
+```
 
+From the script logs, set **`TK_GAS_STATION`** in `.env` to the deployed station address.
 
-6. Add the contract addresses to the readme
+2. Deploy `TKGasDelegate` with its immutable `GAS_STATION` set to that address (`TK_GAS_STATION` must be set in `.env`):
+
+```
+forge script script/DeployTKGasDelegate.s.sol:DeployTKGasDelegate --rpc-url <networkName> --broadcast --verify
+```
+
+Set **`TK_GAS_DELEGATE`** in `.env` to the deployed delegate address.
+
+3. Point the station at the delegate (owner-only; uses both env vars):
+
+```
+forge script script/SetGasStationDelegate.s.sol:SetGasStationDelegate --rpc-url <networkName> --broadcast
+```
+
+After a successful deploy, record the canonical contract addresses for the chain (e.g. in docs or your ops repo).
