@@ -175,6 +175,8 @@ From the script logs, set **`TK_GAS_STATION`** in `.env` to the deployed station
 
 2. Deploy `TKGasDelegate` with its immutable `GAS_STATION` set to that address (`TK_GAS_STATION` must be set in `.env`):
 
+*Note:*  If you set the delegate to have the gas station as the zero address, it will accept from any gas station
+
 ```
 forge script script/DeployTKGasDelegate.s.sol:DeployTKGasDelegate --rpc-url <networkName> --broadcast --verify
 ```
