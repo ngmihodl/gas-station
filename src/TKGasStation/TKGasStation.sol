@@ -13,6 +13,9 @@ contract TKGasStation is ITKGasStation, Ownable {
     error NotDelegated();
     error ExecutionFailed();
 
+    event DelegateUpdated(address indexed updatedBy, address indexed previousDelegate, address indexed newDelegate);
+    event GasStationInitialized(address by, address owner, address indexed delegate);
+
     address public override tkGasDelegate;
 
     /// @notice Initializes the gas station with the TKGasDelegate implementation address
@@ -20,10 +23,13 @@ contract TKGasStation is ITKGasStation, Ownable {
     constructor(address _tkGasDelegate, address _owner) {
         _initializeOwner(_owner);
         tkGasDelegate = _tkGasDelegate;
+        emit GasStationInitialized(msg.sender, _owner, _tkGasDelegate);
     }
 
     function setDelegate(address _delegate) external onlyOwner() {
+        address previous = tkGasDelegate;
         tkGasDelegate = _delegate;
+        emit DelegateUpdated(msg.sender, previous, _delegate);
     }
 
     function _isDelegated(address _targetEoA) internal view returns (bool) {
