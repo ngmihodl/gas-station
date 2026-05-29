@@ -74,8 +74,6 @@ See the interfaces to see all the function types available. There is repeat func
 - Takes only arguments as calldata to reduce gas costs on parsing
 - Batch transaction variations
 
-Also, the delegate has the ability to be called via the fallback function. This enables smaller calldata with custom parsing to save gas further.
-
 # What could go wrong?
 There are two major things that can go wrong:
 1. A user's wallet is drained

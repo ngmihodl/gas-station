@@ -12,11 +12,20 @@ import {IBatchExecution} from "./interfaces/IBatchExecution.sol";
 contract TKGasStation is ITKGasStation, Ownable {
     error NotDelegated();
     error ExecutionFailed();
+    error EnforcedPause();
 
     event DelegateUpdated(address indexed updatedBy, address indexed previousDelegate, address indexed newDelegate);
     event GasStationInitialized(address by, address owner, address indexed delegate);
+    event Paused(address indexed account);
+    event Unpaused(address indexed account);
 
     address public override tkGasDelegate;
+    bool public paused;
+
+    modifier notPaused() {
+        if (paused) revert EnforcedPause();
+        _;
+    }
 
     /// @notice Initializes the gas station with the TKGasDelegate implementation address
     /// @param _tkGasDelegate Address of the TKGasDelegate contract that delegated EOAs point to
@@ -32,10 +41,19 @@ contract TKGasStation is ITKGasStation, Ownable {
         emit DelegateUpdated(msg.sender, previous, _delegate);
     }
 
+    /// @notice Pauses execute, burn, and validate paths guarded by `notPaused`
+    function pause() external onlyOwner {
+        paused = true;
+        emit Paused(msg.sender);
+    }
+
+    /// @notice Unpauses execute, burn, and validate paths guarded by `notPaused`
+    function unpause() external onlyOwner {
+        paused = false;
+        emit Unpaused(msg.sender);
+    }
+
     function _isDelegated(address _targetEoA) internal view returns (bool) {
-        if(tkGasDelegate == address(0)){
-            return false; // no delegate exists currently. Contract stopped 
-        }
 
         uint256 size;
         assembly {
@@ -74,6 +92,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @return The return data from the executed call
     function executeReturns(address _target, address _to, uint256 _ethAmount, bytes calldata _data)
         external
+        notPaused
         returns (bytes memory)
     {
         if (!_isDelegated(_target)) {
@@ -89,7 +108,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _to The contract or address to call
     /// @param _ethAmount The amount of ETH to send with the call (in wei)
     /// @param _data The encoded function call data including signature, nonce, deadline, and arguments
-    function execute(address _target, address _to, uint256 _ethAmount, bytes calldata _data) external {
+    function execute(address _target, address _to, uint256 _ethAmount, bytes calldata _data) external notPaused {
         if (!_isDelegated(_target)) {
             revert NotDelegated();
         }
@@ -115,7 +134,7 @@ contract TKGasStation is ITKGasStation, Ownable {
         address _spender,
         uint256 _approveAmount,
         bytes calldata _data
-    ) external returns (bytes memory) {
+    ) external notPaused returns (bytes memory) {
         if (!_isDelegated(_target)) {
             revert NotDelegated();
         }
@@ -141,7 +160,7 @@ contract TKGasStation is ITKGasStation, Ownable {
         address _spender,
         uint256 _approveAmount,
         bytes calldata _data
-    ) external {
+    ) external notPaused {
         if (!_isDelegated(_target)) {
             revert NotDelegated();
         }
@@ -157,6 +176,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @return Array of return data from each executed call, in the same order as _calls
     function executeBatchReturns(address _target, IBatchExecution.Call[] calldata _calls, bytes calldata _data)
         external
+        notPaused
         returns (bytes[] memory)
     {
         if (!_isDelegated(_target)) {
@@ -173,6 +193,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _data The encoded signature, nonce, and deadline for batch authorization
     function executeBatch(address _target, IBatchExecution.Call[] calldata _calls, bytes calldata _data)
         external
+        notPaused
     {
         if (!_isDelegated(_target)) {
             revert NotDelegated();
@@ -185,7 +206,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _targetEoA The delegated EOA address whose nonce will be burned
     /// @param _signature The signature authorizing the nonce burn operation
     /// @param _nonce The nonce value to invalidate
-    function burnNonce(address _targetEoA, bytes calldata _signature, uint128 _nonce) external {
+    function burnNonce(address _targetEoA, bytes calldata _signature, uint128 _nonce) external notPaused {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
         }
@@ -198,6 +219,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @dev The nonce increments with each executed transaction to prevent replay attacks
     /// @param _targetEoA The delegated EOA address to query
     /// @return The current nonce value (uint128)
+    // notPaused: read-only lens; callable while paused
     function getNonce(address _targetEoA) external view returns (uint128) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
@@ -211,6 +233,7 @@ contract TKGasStation is ITKGasStation, Ownable {
 
     /// @param _targetEoA The address to check for delegation status
     /// @return true if the address is delegated to `tkGasDelegate`, false otherwise
+    // notPaused: read-only lens; callable while paused
     function isDelegated(address _targetEoA) external view returns (bool) {
         return _isDelegated(_targetEoA);
     }
@@ -223,6 +246,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @return true if the signature is valid for the given hash and EOA, false otherwise
     function validateSignature(address _targetEoA, bytes32 _hash, bytes calldata _signature)
         external
+        notPaused
         view
         returns (bool)
     {
@@ -242,6 +266,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _ethAmount The amount of ETH to send (in wei)
     /// @param _arguments The calldata to send to the output contract
     /// @return The EIP-712 compliant hash to be signed
+    // notPaused: hash lens; callable while paused
     function hashExecution(
         address _targetEoA,
         uint128 _nonce,
@@ -261,6 +286,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _targetEoA The delegated EOA whose nonce will be burned
     /// @param _nonce The nonce value to burn
     /// @return The EIP-712 compliant hash to be signed
+    // notPaused: hash lens; callable while paused
     function hashBurnNonce(address _targetEoA, uint128 _nonce) external view returns (bytes32) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
@@ -280,6 +306,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _ethAmount The amount of ETH to send with the call (in wei)
     /// @param _arguments The calldata to send to the output contract
     /// @return The EIP-712 compliant hash to be signed
+    // notPaused: hash lens; callable while paused
     function hashApproveThenExecute(
         address _targetEoA,
         uint128 _nonce,
@@ -307,6 +334,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _sender The address authorized to execute transactions in this session
     /// @param _outputContract The specific contract that can be called in this session
     /// @return The EIP-712 compliant hash to be signed
+    // notPaused: hash lens; callable while paused
     function hashSessionExecution(
         address _targetEoA,
         uint128 _counter,
@@ -327,6 +355,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _deadline The Unix timestamp after which the signature expires
     /// @param _sender The address authorized to execute arbitrary transactions
     /// @return The EIP-712 compliant hash to be signed
+    // notPaused: hash lens; callable while paused
     function hashArbitrarySessionExecution(address _targetEoA, uint128 _counter, uint32 _deadline, address _sender)
         external
         view
@@ -345,6 +374,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _deadline The Unix timestamp after which the signature expires
     /// @param _calls Array of Call structs containing the batch operations
     /// @return The EIP-712 compliant hash to be signed
+    // notPaused: hash lens; callable while paused
     function hashBatchExecution(
         address _targetEoA,
         uint128 _nonce,
@@ -362,6 +392,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     /// @param _targetEoA The delegated EOA whose session counter will be burned
     /// @param _counter The session counter value to burn
     /// @return The EIP-712 compliant hash to be signed
+    // notPaused: hash lens; callable while paused
     function hashBurnSessionCounter(address _targetEoA, uint128 _counter) external view returns (bytes32) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();

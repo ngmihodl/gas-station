@@ -7,12 +7,12 @@ import {IBatchExecution} from "./interfaces/IBatchExecution.sol";
 import {ITKGasDelegate} from "./interfaces/ITKGasDelegate.sol";
 import {IERC721Receiver} from "./interfaces/IERC721Receiver.sol";
 import {IERC1155Receiver} from "./interfaces/IERC1155Receiver.sol";
-import {IERC1721} from "./interfaces/IERC1721.sol";
+import {IERC1271} from "./interfaces/IERC1271.sol";
 
 /// @title TKGasDelegate
 /// @notice Delegation contract for executing transactions with signature-based authorization
 /// @dev Implements EIP-712 for typed structured data signing, supporting multiple execution modes including standard execution, batch execution, sessions, and ERC20 approve-then-execute patterns
-contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, ITKGasDelegate {
+contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, ITKGasDelegate {
     error BatchSizeInvalid();
     error DeadlineExceeded();
     error InvalidToContract();
@@ -67,7 +67,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, I
     /// @custom:storage-location erc7201:TKGasDelegate.state
     struct State {
         uint128 nonce;
-        mapping(bytes16 => bool) expiredSessionCounters;
+        mapping(bytes16 counter => bool expired) expiredSessionCounters;
     }
 
     bytes32 internal constant STATE_STORAGE_POSITION =
@@ -99,7 +99,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, I
     address public immutable GAS_STATION; 
 
     /// @notice Initializes the TKGasDelegate contract
-    /// @dev Sets up EIP-712 domain separator with name "TKGasDelegate" and version "1"
+    /// @dev Sets up EIP-712 domain separator with name "TKGasDelegate" and version "1.1"
     constructor(address _gasStationAddress) EIP712() {
         GAS_STATION = _gasStationAddress;
     }
@@ -693,6 +693,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, I
         hash = _hashTypedData(hash);
 
         _requireSelf(hash, _signature);
+        _validateCalledFromGasStation();
         _consumeNonce(_nonce);
     }
 
@@ -747,46 +748,6 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, I
             return result;
         }
         revert ExecutionFailed();
-    }
-
-    function _executeSessionWithValueNoReturn(
-        bytes calldata _signature,
-        bytes calldata _counterBytes,
-        bytes calldata _deadlineBytes,
-        bytes calldata _outputContractBytes,
-        uint256 _ethAmount,
-        bytes calldata _arguments
-    ) internal {
-        address sender = msg.sender;
-        bytes32 hash;
-        assembly ("memory-safe") {
-            let deadline := shr(224, calldataload(_deadlineBytes.offset))
-            if gt(timestamp(), deadline) {
-                // Use precomputed selector and revert with 4-byte custom error
-                mstore(0x00, DEADLINE_EXCEEDED_SELECTOR)
-                revert(0x00, 0x04)
-            }
-            let ptr := mload(0x40)
-            mstore(ptr, SESSION_EXECUTION_TYPEHASH)
-            let counterValue := shr(128, calldataload(_counterBytes.offset))
-            mstore(add(ptr, 0x20), counterValue)
-            mstore(add(ptr, 0x40), deadline)
-            mstore(add(ptr, 0x60), sender)
-            let raw := calldataload(_outputContractBytes.offset)
-            mstore(add(ptr, 0x80), shr(96, raw))
-            hash := keccak256(ptr, 0xa0)
-            mstore(0x40, add(ptr, 0xa0))
-        }
-        hash = _hashTypedData(hash);
-
-        _validateSession(hash, _signature, _counterBytes);
-        assembly ("memory-safe") {
-            let outputContract := shr(96, calldataload(_outputContractBytes.offset))
-            let ptr := mload(0x40)
-            calldatacopy(ptr, _arguments.offset, _arguments.length)
-            if iszero(call(gas(), outputContract, _ethAmount, ptr, _arguments.length, 0, 0)) { revert(0, 0) }
-            mstore(0x40, add(ptr, _arguments.length))
-        }
     }
 
     function _executeSessionWithValueNoReturn(
@@ -1040,42 +1001,6 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1721, I
             return result;
         }
         revert ExecutionFailed();
-    }
-
-    function _executeSessionArbitraryWithValueNoReturn(
-        bytes calldata _signature,
-        bytes calldata _counterBytes,
-        bytes calldata _deadlineBytes,
-        bytes calldata _outputContractBytes,
-        uint256 _ethAmount,
-        bytes calldata _arguments
-    ) internal {
-        bytes32 hash;
-        assembly ("memory-safe") {
-            let deadline := shr(224, calldataload(_deadlineBytes.offset))
-            if gt(timestamp(), deadline) {
-                let errorPtr := mload(0x40)
-                mstore(errorPtr, DEADLINE_EXCEEDED_SELECTOR)
-                revert(errorPtr, 0x04)
-            } // DeadlineExceeded
-            let ptr := mload(0x40)
-            mstore(ptr, ARBITRARY_SESSION_EXECUTION_TYPEHASH)
-            let counterValue := shr(128, calldataload(_counterBytes.offset))
-            mstore(add(ptr, 0x20), counterValue)
-            mstore(add(ptr, 0x40), deadline)
-            mstore(add(ptr, 0x60), caller())
-            hash := keccak256(ptr, 0x80)
-            mstore(0x40, add(ptr, 0x80))
-        }
-        hash = _hashTypedData(hash);
-        _validateSession(hash, _signature, _counterBytes);
-        assembly {
-            let outputContract := shr(96, calldataload(_outputContractBytes.offset))
-            let ptr := mload(0x40)
-            calldatacopy(ptr, _arguments.offset, _arguments.length)
-            if iszero(call(gas(), outputContract, _ethAmount, ptr, _arguments.length, 0, 0)) { revert(0, 0) }
-            //no need to restore free memory pointer - execution ends immediately
-        }
     }
 
     function _executeSessionArbitraryWithValueNoReturn(
