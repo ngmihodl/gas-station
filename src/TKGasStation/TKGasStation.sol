@@ -22,6 +22,7 @@ contract TKGasStation is ITKGasStation, Ownable {
     address public override tkGasDelegate;
     bool public paused;
 
+    /// @dev Reverts with `EnforcedPause` when `paused` is true
     modifier notPaused() {
         if (paused) revert EnforcedPause();
         _;
@@ -53,8 +54,11 @@ contract TKGasStation is ITKGasStation, Ownable {
         emit Unpaused(msg.sender);
     }
 
+    /// @notice Returns whether an EOA is delegated to `tkGasDelegate` via EIP-7702
+    /// @dev Checks for 23-byte delegation code (`0xef0100` prefix + implementation address)
+    /// @param _targetEoA The address to check
+    /// @return true if `_targetEoA` delegates to `tkGasDelegate`, false otherwise
     function _isDelegated(address _targetEoA) internal view returns (bool) {
-
         uint256 size;
         assembly {
             size := extcodesize(_targetEoA)
@@ -213,13 +217,28 @@ contract TKGasStation is ITKGasStation, Ownable {
         ITKGasDelegate(_targetEoA).burnNonce(_signature, _nonce);
     }
 
+    /// @notice Burns a session counter to revoke all sessions using that counter
+    /// @dev Validates delegation before allowing counter burn. Requires signature authorization from the EOA owner
+    /// @param _targetEoA The delegated EOA address whose session counter will be burned
+    /// @param _signature The signature authorizing the counter burn operation
+    /// @param _counter The session counter value to burn
+    function burnSessionCounter(address _targetEoA, bytes calldata _signature, uint128 _counter)
+        external
+        notPaused
+    {
+        if (!_isDelegated(_targetEoA)) {
+            revert NotDelegated();
+        }
+        ITKGasDelegate(_targetEoA).burnSessionCounter(_signature, _counter);
+    }
+
     /* Lense Functions */
 
     /// @notice Retrieves the current nonce for a delegated EOA
     /// @dev The nonce increments with each executed transaction to prevent replay attacks
     /// @param _targetEoA The delegated EOA address to query
     /// @return The current nonce value (uint128)
-    // notPaused: read-only lens; callable while paused
+    // notPaused: read-only lense; callable while paused
     function getNonce(address _targetEoA) external view returns (uint128) {
         if (!_isDelegated(_targetEoA)) {
             revert NotDelegated();
@@ -233,7 +252,7 @@ contract TKGasStation is ITKGasStation, Ownable {
 
     /// @param _targetEoA The address to check for delegation status
     /// @return true if the address is delegated to `tkGasDelegate`, false otherwise
-    // notPaused: read-only lens; callable while paused
+    // notPaused: read-only lense; callable while paused
     function isDelegated(address _targetEoA) external view returns (bool) {
         return _isDelegated(_targetEoA);
     }
@@ -292,6 +311,19 @@ contract TKGasStation is ITKGasStation, Ownable {
             revert NotDelegated();
         }
         return ITKGasDelegate(_targetEoA).hashBurnNonce(_nonce);
+    }
+
+    /// @notice Computes the EIP-712 typed data hash for burning a session counter
+    /// @dev Used to generate the hash that must be signed to invalidate a session counter
+    /// @param _targetEoA The delegated EOA whose session counter will be burned
+    /// @param _counter The session counter value to burn
+    /// @return The EIP-712 compliant hash to be signed
+    // notPaused: hash lens; callable while paused
+    function hashBurnSessionCounter(address _targetEoA, uint128 _counter) external view returns (bytes32) {
+        if (!_isDelegated(_targetEoA)) {
+            revert NotDelegated();
+        }
+        return ITKGasDelegate(_targetEoA).hashBurnSessionCounter(_counter);
     }
 
     /// @notice Computes the EIP-712 typed data hash for an approve-then-execute operation
@@ -385,18 +417,5 @@ contract TKGasStation is ITKGasStation, Ownable {
             revert NotDelegated();
         }
         return ITKGasDelegate(_targetEoA).hashBatchExecution(_nonce, _deadline, _calls);
-    }
-
-    /// @notice Computes the EIP-712 typed data hash for burning a session counter
-    /// @dev Used to invalidate all future uses of a session with the given counter
-    /// @param _targetEoA The delegated EOA whose session counter will be burned
-    /// @param _counter The session counter value to burn
-    /// @return The EIP-712 compliant hash to be signed
-    // notPaused: hash lens; callable while paused
-    function hashBurnSessionCounter(address _targetEoA, uint128 _counter) external view returns (bytes32) {
-        if (!_isDelegated(_targetEoA)) {
-            revert NotDelegated();
-        }
-        return ITKGasDelegate(_targetEoA).hashBurnSessionCounter(_counter);
     }
 }

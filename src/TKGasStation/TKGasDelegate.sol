@@ -74,6 +74,8 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         0x34d5be385818fa5c8c4e7f9d5a028251d28ebab8aaf203a072d1dde2d49a1100;
     // Original: abi.encode(uint256(keccak256("TKGasDelegate.state")) - 1) & ~bytes32(uint256(0xff))
 
+    /// @dev Returns the ERC-7201 namespaced storage slot for delegate state
+    /// @return $ The delegate state struct at `STATE_STORAGE_POSITION`
     function _getStateStorage() internal pure returns (State storage $) {
         assembly ("memory-safe") {
             $.slot := STATE_STORAGE_POSITION
@@ -105,8 +107,8 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     }
 
     // Internal helpers to centralize common validation logic
-    /// @dev If the gas station is set to 0, then anything can be the gas station
 
+    /// @dev Reverts unless `msg.sender` is `GAS_STATION`, or `GAS_STATION` is unset (any caller allowed)
     function _validateCalledFromGasStation() internal view {
         if (GAS_STATION == address(0) || msg.sender == GAS_STATION) {
             return;
@@ -114,24 +116,39 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         revert NotGasStation();
     }
 
+    /// @dev Validates gas station caller, EOA signature, and consumes the signed nonce
+    /// @param _hash EIP-712 typed data hash that was signed
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
     function _validateExecute(bytes32 _hash, bytes calldata _signature, bytes calldata _nonceBytes) internal {
         _validateCalledFromGasStation();
         _requireSelf(_hash, _signature);
         _consumeNonce(_nonceBytes);
     }
 
+    /// @dev Validates gas station caller, EOA signature, and that the session counter is not burned
+    /// @param _hash EIP-712 typed data hash that was signed
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
     function _validateSession(bytes32 _hash, bytes calldata _signature, bytes calldata _counterBytes) internal view {
         _validateCalledFromGasStation();
         _requireSelf(_hash, _signature);
         _requireCounter(_counterBytes);
     }
 
+    /// @dev Reverts with `NotSelf` unless the signature recovers to this delegated account
+    /// @param _hash EIP-712 typed data hash that was signed
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
     function _requireSelf(bytes32 _hash, bytes calldata _signature) internal view {
         if (!_validateSignature(_hash, _signature)) {
             revert NotSelf();
         }
     }
 
+    /// @dev Returns whether `_signature` is a valid ECDSA signature from this account for `_hash`
+    /// @param _hash EIP-712 typed data hash that was signed
+    /// @param _signature 65-byte ECDSA signature to verify
+    /// @return true if recovery matches this delegated account
     function _validateSignature(bytes32 _hash, bytes calldata _signature) internal view returns (bool) {
         return ECDSA.recoverCalldata(_hash, _signature) == address(this);
     }
@@ -157,6 +174,8 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         return 0xffffffff;
     }
 
+    /// @dev Increments nonce after verifying it matches the 16-byte calldata-encoded value
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
     function _consumeNonce(bytes calldata _nonceBytes) internal {
         uint128 nonceValue;
         State storage state = _getStateStorage();
@@ -171,6 +190,8 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Increments nonce after verifying it matches `_nonce`
+    /// @param _nonce Nonce value that must equal the current stored nonce
     function _consumeNonce(uint128 _nonce) internal {
         State storage state = _getStateStorage();
         if (_nonce != state.nonce) {
@@ -181,6 +202,8 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Reverts with `InvalidCounter` if the session counter has been burned
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
     function _requireCounter(bytes calldata _counterBytes) internal view {
         // This call should only happen coming from validateSession, so we can assume the counterBytes are the right length
         if (_getStateStorage().expiredSessionCounters[bytes16(_counterBytes)]) {
@@ -188,6 +211,8 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Reverts with `InvalidCounter` if the session counter has been burned
+    /// @param _counter Session counter value to check
     function _requireCounter(uint128 _counter) internal view {
         if (_getStateStorage().expiredSessionCounters[bytes16(_counter)]) {
             revert InvalidCounter();
@@ -201,6 +226,9 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         return _domainSeparator();
     }
 
+    /// @dev EIP-712 domain name and version for typed data hashing
+    /// @return name EIP-712 domain name (`TKGasDelegate`)
+    /// @return version EIP-712 domain version (`1.1`)
     function _domainNameAndVersion() internal pure override returns (string memory name, string memory version) {
         name = "TKGasDelegate";
         version = "1.1";
@@ -347,6 +375,17 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         );
     }
 
+    /// @dev Approves ERC-20 then executes; validates signature and nonce; returns call data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _erc20 ERC-20 token to approve
+    /// @param _spender Address approved to spend tokens
+    /// @param _approveAmount Token amount to approve
+    /// @param _outputContract Contract to call after approval
+    /// @param _ethAmount Wei to send with the post-approval call
+    /// @param _arguments Calldata for the post-approval call
+    /// @return Return data from the post-approval call
     function _approveThenExecuteWithParams(
         bytes calldata _signature, // 65 bytes
         bytes calldata _nonceBytes, // uint128
@@ -431,6 +470,16 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         revert ExecutionFailed();
     }
 
+    /// @dev Approves ERC-20 then executes; validates signature and nonce; no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _erc20 ERC-20 token to approve
+    /// @param _spender Address approved to spend tokens
+    /// @param _approveAmount Token amount to approve
+    /// @param _outputContract Contract to call after approval
+    /// @param _ethAmount Wei to send with the post-approval call
+    /// @param _arguments Calldata for the post-approval call
     function _approveThenExecuteNoReturnWithParams(
         bytes calldata _signature, // 65 bytes
         bytes calldata _nonceBytes, // uint128
@@ -515,6 +564,12 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Executes with zero ETH; validates signature and nonce; no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract for the call
+    /// @param _arguments Calldata for the call
     function _executeNoValueNoReturn(
         bytes calldata _signature,
         bytes calldata _nonceBytes,
@@ -557,6 +612,13 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Executes with zero ETH; validates signature and nonce; returns call data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract for the call
+    /// @param _arguments Calldata for the call
+    /// @return Return data from the call
     function _executeNoValue(
         bytes calldata _signature,
         bytes calldata _nonceBytes,
@@ -597,6 +659,14 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         revert ExecutionFailed();
     }
 
+    /// @dev Executes with ETH; validates signature and nonce; returns call data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract for the call
+    /// @param _ethAmount Wei to send with the call
+    /// @param _arguments Calldata for the call
+    /// @return Return data from the call
     function _executeWithValue(
         bytes calldata _signature,
         bytes calldata _nonceBytes,
@@ -638,6 +708,13 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         revert ExecutionFailed();
     }
 
+    /// @dev Executes with ETH; validates signature and nonce; no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract for the call
+    /// @param _ethAmount Wei to send with the call
+    /// @param _arguments Calldata for the call
     function _executeWithValueNoReturn(
         bytes calldata _signature,
         bytes calldata _nonceBytes,
@@ -710,6 +787,14 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
 
     /* Session execution */
 
+    /// @dev Session execution to a fixed contract; validates session auth; returns call data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract authorized for this session
+    /// @param _ethAmount Wei to send with the call
+    /// @param _arguments Calldata for the call
+    /// @return Return data from the call
     function _executeSessionWithValue(
         bytes calldata _signature,
         bytes calldata _counterBytes,
@@ -750,6 +835,13 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         revert ExecutionFailed();
     }
 
+    /// @dev Session execution to a fixed contract; validates session auth; no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract authorized for this session
+    /// @param _ethAmount Wei to send with the call
+    /// @param _arguments Calldata for the call
     function _executeSessionWithValueNoReturn(
         bytes calldata _signature,
         bytes calldata _counterBytes,
@@ -788,6 +880,13 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Batch session execution restricted to one output contract; returns per-call data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract; every call in `_calls` must use this address
+    /// @param _calls Batch of calls to execute under the session
+    /// @return Per-call return data in the same order as `_calls`
     function _executeBatchSession(
         bytes calldata _signature,
         bytes calldata _counterBytes,
@@ -852,6 +951,12 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         return results;
     }
 
+    /// @dev Batch session execution with output contract as 20-byte calldata slice; no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContractBytes 20-byte calldata slice of the authorized output contract
+    /// @param _calls Batch of calls; each `to` must match `_outputContractBytes`
     function _executeBatchSessionNoReturn(
         bytes calldata _signature,
         bytes calldata _counterBytes,
@@ -905,6 +1010,12 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Batch session execution restricted to one output contract; no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract; every call in `_calls` must use this address
+    /// @param _calls Batch of calls to execute under the session
     function _executeBatchSessionNoReturn(
         bytes calldata _signature,
         bytes calldata _counterBytes,
@@ -965,6 +1076,14 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Arbitrary session execution (any target contract); returns call data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract for the call (not restricted in the typehash)
+    /// @param _ethAmount Wei to send with the call
+    /// @param _arguments Calldata for the call
+    /// @return Return data from the call
     function _executeSessionArbitraryWithValue(
         bytes calldata _signature,
         bytes calldata _counterBytes,
@@ -1003,6 +1122,13 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         revert ExecutionFailed();
     }
 
+    /// @dev Arbitrary session execution (any target contract); no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _outputContract Target contract for the call
+    /// @param _ethAmount Wei to send with the call
+    /// @param _arguments Calldata for the call
     function _executeSessionArbitraryWithValueNoReturn(
         bytes calldata _signature,
         bytes calldata _counterBytes,
@@ -1038,10 +1164,16 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Arbitrary batch session execution (any target per call); returns per-call data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _calls Batch of calls; each may target any contract
+    /// @return Per-call return data in the same order as `_calls`
     function _executeBatchSessionArbitrary(
         bytes calldata _signature,
         bytes calldata _counterBytes,
-        bytes calldata _deadlineBytes, // Changed from uint128
+        bytes calldata _deadlineBytes,
         IBatchExecution.Call[] calldata _calls
     ) internal returns (bytes[] memory) {
         uint256 length = _calls.length;
@@ -1095,6 +1227,11 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         return results;
     }
 
+    /// @dev Arbitrary batch session execution (any target per call); no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _calls Batch of calls; each may target any contract
     function _executeBatchSessionArbitraryNoReturn(
         bytes calldata _signature,
         bytes calldata _counterBytes,
@@ -1420,6 +1557,12 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         _executeSessionArbitraryWithValueNoReturn(data[0:65], data[65:81], data[81:85], to, value, data[137:]);
     }
 
+    /// @dev Standard batch execution with explicit `Call[]`; validates signature and nonce; returns results
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _calls Batch of calls to execute atomically under one nonce
+    /// @return Per-call return data in the same order as `_calls`
     function _executeBatchWithCalls(
         bytes calldata _signature,
         bytes calldata _nonceBytes,
@@ -1467,6 +1610,11 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         return results;
     }
 
+    /// @dev Standard batch execution with explicit `Call[]`; validates signature and nonce; no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _calls Batch of calls to execute atomically under one nonce
     function _executeBatchWithCallsNoReturn(
         bytes calldata _signature,
         bytes calldata _nonceBytes,
@@ -1512,6 +1660,12 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev Standard batch execution with ABI-encoded `Call[]` in calldata; returns results
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _calls ABI-encoded `Call[]` tail (`offset=0x20`, then length and elements)
+    /// @return Per-call return data in the same order as the decoded calls
     function _executeBatch(
         bytes calldata _signature,
         bytes calldata _nonceBytes,
@@ -1575,6 +1729,11 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         return results;
     }
 
+    /// @dev Standard batch execution with ABI-encoded `Call[]` in calldata; no return data
+    /// @param _signature 65-byte ECDSA signature from the delegated EOA
+    /// @param _nonceBytes 16-byte calldata-encoded nonce (uint128, left-aligned)
+    /// @param _deadlineBytes 4-byte calldata-encoded deadline (uint32 unix timestamp)
+    /// @param _calls ABI-encoded `Call[]` tail (`offset=0x20`, then length and elements)
     function _executeBatchNoReturn(
         bytes calldata _signature,
         bytes calldata _nonceBytes,
@@ -1636,6 +1795,9 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
+    /// @dev EIP-712 hash of a batch call array; reverts if length is zero or exceeds `MAX_BATCH_SIZE`
+    /// @param _calls Batch of calls to hash for EIP-712 signing
+    /// @return Keccak256 hash of the packed per-call struct hashes
     function _hashCallArray(IBatchExecution.Call[] calldata _calls) internal pure returns (bytes32) {
         assembly {
             let length := _calls.length
@@ -1646,6 +1808,10 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
         return _hashCallArrayUnchecked(_calls);
     }
+
+    /// @dev EIP-712 hash of a batch call array without enforcing batch size bounds
+    /// @param _calls Batch of calls to hash for EIP-712 signing
+    /// @return Keccak256 hash of the packed per-call struct hashes
     function _hashCallArrayUnchecked(IBatchExecution.Call[] calldata _calls) internal pure returns (bytes32) {
         uint256 length = _calls.length;
         bytes32[] memory structHashes = new bytes32[](length);
