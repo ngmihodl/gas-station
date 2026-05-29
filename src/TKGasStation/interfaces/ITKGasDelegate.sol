@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import {IBatchExecution} from "./IBatchExecution.sol";
 
 /// @title ITKGasDelegate
 /// @notice Interface for the delegation contract that executes transactions with signature-based authorization
 /// @dev Supports multiple execution modes: standard execution, batch execution, sessions, and ERC20 approve-then-execute patterns
+/// @custom:security-contact security@turnkey.com
 interface ITKGasDelegate is IBatchExecution {
     /// @notice Returns the current nonce for this delegate
     /// @return The current nonce value

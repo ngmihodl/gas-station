@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import {IBatchExecution} from "./IBatchExecution.sol";
 
 /// @title ITKGasStation
 /// @notice Interface for the gas station contract that routes execution calls to delegated EOAs
 /// @dev Provides functions for executing transactions, approving tokens, and managing nonces through delegated accounts
+/// @custom:security-contact security@turnkey.com
 interface ITKGasStation is IBatchExecution {
     /// @notice Returns the address of the TKGasDelegate implementation
     /// @return The address of the TKGasDelegate contract

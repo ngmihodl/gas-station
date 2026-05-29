@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import "forge-std/Script.sol";
 import "forge-std/console2.sol";
@@ -9,6 +9,7 @@ interface IImmutableCreate2Factory {
     function safeCreate2(bytes32 _salt, bytes calldata _initCode) external payable returns (address _deploymentAddress);
 }
 
+/// @custom:security-contact security@turnkey.com
 contract DeployTKGasStation is Script {
     address private constant IMMUTABLE_CREATE2_FACTORY = 0x0000000000FFe8B47B3e2130213B802212439497;
 

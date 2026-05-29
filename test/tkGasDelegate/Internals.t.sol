@@ -1,4 +1,4 @@
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import {MockDelegate} from "../mocks/MockDelegate.t.sol";
 import {TKGasDelegateTestBase as TKGasDelegateBase} from "./TKGasDelegateTestBase.t.sol";

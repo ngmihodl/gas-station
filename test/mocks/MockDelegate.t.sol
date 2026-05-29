@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import {TKGasDelegate} from "../../src/TKGasStation/TKGasDelegate.sol";
 import {IBatchExecution} from "../../src/TKGasStation/interfaces/IBatchExecution.sol";

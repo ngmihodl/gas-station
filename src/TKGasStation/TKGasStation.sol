@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import {Ownable} from "solady/auth/Ownable.sol";
 import {ITKGasDelegate} from "./interfaces/ITKGasDelegate.sol";
@@ -9,6 +9,7 @@ import {IBatchExecution} from "./interfaces/IBatchExecution.sol";
 /// @title TKGasStation
 /// @notice Gas station contract that routes execution calls to delegated EOA accounts
 /// @dev This contract acts as an intermediary that validates delegated EOAs and forwards execution calls to TKGasDelegate
+/// @custom:security-contact security@turnkey.com
 contract TKGasStation is ITKGasStation, Ownable {
     error NotDelegated();
     error ExecutionFailed();

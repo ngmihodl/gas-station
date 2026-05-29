@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import "forge-std/Script.sol";
 import "forge-std/console2.sol";
 import {TKGasDelegate} from "../src/TKGasStation/TKGasDelegate.sol";
 
+/// @custom:security-contact security@turnkey.com
 contract GetDelegateInitCodeHash is Script {
     function run() external {
         // Get the creation code (TKGasDelegate has no constructor args)
