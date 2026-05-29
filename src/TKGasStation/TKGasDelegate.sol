@@ -896,7 +896,6 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         address _outputContract,
         IBatchExecution.Call[] calldata _calls
     ) internal returns (bytes[] memory) {
-        // Check if deadline has passed using calldata
         uint256 length = _calls.length;
 
         if (length > MAX_BATCH_SIZE || length == 0) {
@@ -964,9 +963,11 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         IBatchExecution.Call[] calldata _calls
     ) internal {
         uint256 length = _calls.length;
+
         if (length > MAX_BATCH_SIZE || length == 0) {
             revert BatchSizeInvalid();
         }
+
         bytes32 hash;
         assembly ("memory-safe") {
             let deadline := shr(224, calldataload(_deadlineBytes.offset))
@@ -1019,7 +1020,10 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         address _outputContract,
         IBatchExecution.Call[] calldata _calls
     ) internal {
-        if (_calls.length > MAX_BATCH_SIZE || _calls.length == 0) {
+        // Execute the session transaction
+        uint256 length = _calls.length;
+
+        if (length > MAX_BATCH_SIZE || length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -1044,9 +1048,6 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
         hash = _hashTypedData(hash);
         _validateSession(hash, _signature, _counterBytes);
-
-        // Execute the session transaction
-        uint256 length = _calls.length;
 
         // Cache array access to avoid repeated calldata reads
         for (uint256 i = 0; i < length; ++i) {
@@ -1170,9 +1171,11 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         IBatchExecution.Call[] calldata _calls
     ) internal returns (bytes[] memory) {
         uint256 length = _calls.length;
+
         if (length > MAX_BATCH_SIZE || length == 0) {
             revert BatchSizeInvalid();
         }
+
         bytes32 hash;
         assembly ("memory-safe") {
             let deadline := shr(224, calldataload(_deadlineBytes.offset))
@@ -1229,9 +1232,11 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         IBatchExecution.Call[] calldata _calls
     ) internal {
         uint256 length = _calls.length;
+
         if (length > MAX_BATCH_SIZE || length == 0) {
             revert BatchSizeInvalid();
         }
+
         bytes32 hash;
         assembly ("memory-safe") {
             let deadline := shr(224, calldataload(_deadlineBytes.offset))
@@ -1556,6 +1561,12 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         bytes calldata _deadlineBytes,
         IBatchExecution.Call[] calldata _calls
     ) internal returns (bytes[] memory) {
+        uint256 length = _calls.length;
+
+        if (length > MAX_BATCH_SIZE || length == 0) {
+            revert BatchSizeInvalid();
+        }
+
         // Hash the calls array to match the calldata version exactly
         // The calldata version uses keccak256(_calls) where _calls is abi.encode(IBatchExecution.Call[])
         // So we need to hash the encoded calls array
@@ -1579,8 +1590,6 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
         hash = _hashTypedData(hash);
         _validateExecute(hash, _signature, _nonceBytes);
-
-        uint256 length = _calls.length;
 
         bytes[] memory results = new bytes[](length);
         for (uint256 i = 0; i < length; ++i) {
@@ -1603,10 +1612,13 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         bytes calldata _deadlineBytes,
         IBatchExecution.Call[] calldata _calls
     ) internal {
-        // Hash the calls array to match the calldata version exactly
-        // The calldata version uses keccak256(_calls) where _calls is abi.encode(IBatchExecution.Call[])
-        // So we need to hash the encoded calls array
-        bytes32 executionsHash = _hashCallArray(_calls); // checks the batch size
+        uint256 length = _calls.length;
+
+        if (length > MAX_BATCH_SIZE || length == 0) {
+            revert BatchSizeInvalid();
+        }
+
+        bytes32 executionsHash = _hashCallArray(_calls);
         bytes32 hash;
         assembly ("memory-safe") {
             let deadline := shr(224, calldataload(_deadlineBytes.offset))
@@ -1627,8 +1639,6 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
         hash = _hashTypedData(hash);
         _validateExecute(hash, _signature, _nonceBytes);
-
-        uint256 length = _calls.length;
 
         for (uint256 i = 0; i < length; ++i) {
             IBatchExecution.Call calldata execution = _calls[i];
@@ -1667,7 +1677,11 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
             length := calls.length
         }
 
-        bytes32 executionsHash = _hashCallArray(calls); // checks the batch size
+        if (length > MAX_BATCH_SIZE || length == 0) {
+            revert BatchSizeInvalid();
+        }
+
+        bytes32 executionsHash = _hashCallArray(calls);
         bytes32 hash;
 
         assembly ("memory-safe") {
@@ -1732,7 +1746,11 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
             length := calls.length
         }
 
-        bytes32 executionsHash = _hashCallArray(calls); // checks the batch size
+        if (length > MAX_BATCH_SIZE || length == 0) {
+            revert BatchSizeInvalid();
+        }
+
+        bytes32 executionsHash = _hashCallArray(calls);
         bytes32 hash;
         assembly ("memory-safe") {
             let deadline := shr(224, calldataload(_deadlineBytes.offset))
@@ -1770,13 +1788,12 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     /// @param _calls Batch of calls to hash for EIP-712 signing
     /// @return Keccak256 hash of the packed per-call struct hashes
     function _hashCallArray(IBatchExecution.Call[] calldata _calls) internal pure returns (bytes32) {
-        assembly {
-            let length := _calls.length
-            if gt(sub(length, 1), sub(MAX_BATCH_SIZE, 1)) {
-                mstore(0x00, BATCH_SIZE_INVALID_SELECTOR)
-                revert(0x00, 0x04)
-            }
+        uint256 length = _calls.length;
+
+        if (length > MAX_BATCH_SIZE || length == 0) {
+            revert BatchSizeInvalid();
         }
+
         return _hashCallArrayUnchecked(_calls);
     }
 
