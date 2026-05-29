@@ -18,9 +18,17 @@ contract TKGasDelegateTestBase is Test {
     address payable public user;
     address payable public user2;
 
+    /// @dev Gas station passed to `MockDelegate` (`address(0)` = any caller may invoke the delegate).
+    address public mockDelegateGasStation;
+
+    /// @dev Override to bind the delegate to a gas station (e.g. `address(tkGasStation)`).
+    function _mockDelegateGasStation() internal view virtual returns (address) {
+        return address(0);
+    }
+
     function setUp() public virtual {
-        // Deploy MockDelegate
-        tkGasDelegate = new MockDelegate();
+        mockDelegateGasStation = _mockDelegateGasStation();
+        tkGasDelegate = new MockDelegate(mockDelegateGasStation);
         user = payable(vm.addr(USER_PRIVATE_KEY)); // 0x3545A2F3928d5b21E71a790FB458F4AE03306C55
         user2 = payable(vm.addr(USER_PRIVATE_KEY_2));
 

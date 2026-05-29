@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {Test, console} from "forge-std/Test.sol";
 import {VmSafe} from "forge-std/Vm.sol";
 import {TKGasStation} from "../src/TKGasStation/TKGasStation.sol";
+import {TKGasDelegate} from "../src/TKGasStation/TKGasDelegate.sol";
 import {MockDelegate} from "./mocks/MockDelegate.t.sol";
 import {MockERC20} from "./mocks/MockERC20.t.sol";
 import {IBatchExecution} from "../src/TKGasStation/interfaces/IBatchExecution.sol";
@@ -19,8 +20,9 @@ contract TKGasStationTest is Test {
     uint256 constant USER_PRIVATE_KEY = 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
 
     function setUp() public {
-        tkGasDelegate = new MockDelegate();
-        tkGasStation = new TKGasStation(address(tkGasDelegate), address(this));
+        tkGasStation = new TKGasStation(address(0), address(this));
+        tkGasDelegate = new MockDelegate(address(tkGasStation));
+        tkGasStation.setDelegate(address(tkGasDelegate));
         user = vm.addr(USER_PRIVATE_KEY);
         paymaster = makeAddr("paymaster");
 
@@ -71,6 +73,111 @@ contract TKGasStationTest is Test {
 
     function testInit() public view {
         assertTrue(tkGasStation.tkGasDelegate() == address(tkGasDelegate));
+        assertEq(MockDelegate(payable(address(tkGasDelegate))).GAS_STATION(), address(tkGasStation));
+    }
+
+    function testPauseUnpause() public {
+        mockToken.mint(user, 20 * 10 ** 18);
+        address receiver = makeAddr("receiver_pause");
+
+        MockDelegate(payable(address(tkGasDelegate))).spoof_Nonce(1);
+        uint128 nonce = MockDelegate(payable(user)).nonce();
+        uint32 deadline = uint32(block.timestamp + 86400);
+        bytes memory args = abi.encodeWithSelector(mockToken.transfer.selector, receiver, 10 * 10 ** 18);
+        bytes memory signature =
+            _sign(USER_PRIVATE_KEY, user, nonce, deadline, address(mockToken), 0, args);
+        bytes memory paramData = abi.encodePacked(signature, bytes16(nonce), bytes4(deadline), args);
+
+        bytes32 execHash = tkGasStation.hashExecution(user, nonce, deadline, address(mockToken), 0, args);
+
+        vm.startPrank(user);
+        bytes32 burnHash = MockDelegate(payable(user)).hashBurnNonce(nonce);
+        vm.stopPrank();
+        (uint8 burnV, bytes32 burnR, bytes32 burnS) = vm.sign(USER_PRIVATE_KEY, burnHash);
+        bytes memory burnSignature = abi.encodePacked(burnR, burnS, burnV);
+
+        assertFalse(tkGasStation.paused());
+
+        tkGasStation.pause();
+        assertTrue(tkGasStation.paused());
+
+        vm.prank(paymaster);
+        vm.expectRevert(TKGasStation.EnforcedPause.selector);
+        tkGasStation.execute(user, address(mockToken), 0, paramData);
+
+        vm.prank(paymaster);
+        vm.expectRevert(TKGasStation.EnforcedPause.selector);
+        tkGasStation.burnNonce(user, burnSignature, nonce);
+
+        vm.prank(paymaster);
+        vm.expectRevert(TKGasStation.EnforcedPause.selector);
+        tkGasStation.validateSignature(user, execHash, signature);
+
+        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](1);
+        calls[0] = IBatchExecution.Call({
+            to: address(mockToken),
+            value: 0,
+            data: abi.encodeWithSelector(mockToken.transfer.selector, makeAddr("receiver_batch"), 1)
+        });
+        bytes memory batchParamData =
+            abi.encodePacked(signature, bytes16(nonce), bytes4(deadline), abi.encode(calls));
+        vm.prank(paymaster);
+        vm.expectRevert(TKGasStation.EnforcedPause.selector);
+        tkGasStation.executeBatch(user, calls, batchParamData);
+
+        // Read-only lenses remain callable while paused
+        assertEq(tkGasStation.getNonce(user), nonce);
+        tkGasStation.hashExecution(user, nonce, deadline, address(mockToken), 0, args);
+
+        tkGasStation.unpause();
+        assertFalse(tkGasStation.paused());
+
+        vm.prank(paymaster);
+        tkGasStation.execute(user, address(mockToken), 0, paramData);
+        assertEq(mockToken.balanceOf(receiver), 10 * 10 ** 18);
+    }
+
+    function testSetGasStationDelegate() public {
+        assertTrue(tkGasStation.isDelegated(user));
+        assertEq(tkGasStation.tkGasDelegate(), address(tkGasDelegate));
+
+        tkGasStation.setDelegate(address(1));
+        assertEq(tkGasStation.tkGasDelegate(), address(1));
+        assertFalse(tkGasStation.isDelegated(user));
+
+        mockToken.mint(user, 20 * 10 ** 18);
+        MockDelegate(payable(address(tkGasDelegate))).spoof_Nonce(1);
+        uint128 nonce = MockDelegate(payable(user)).nonce();
+        uint32 deadline = uint32(block.timestamp + 86400);
+        bytes memory args = abi.encodeWithSelector(mockToken.transfer.selector, makeAddr("receiver"), 10 * 10 ** 18);
+        bytes memory signature =
+            _sign(USER_PRIVATE_KEY, user, nonce, deadline, address(mockToken), 0, args);
+        bytes memory paramData = abi.encodePacked(signature, bytes16(nonce), bytes4(deadline), args);
+
+        vm.prank(paymaster);
+        vm.expectRevert(TKGasStation.NotDelegated.selector);
+        tkGasStation.execute(user, address(mockToken), 0, paramData);
+    }
+
+    function testGasDelegateCannotBeCalledWithoutStation() public {
+        mockToken.mint(user, 20 * 10 ** 18);
+        address receiver = makeAddr("receiver_direct");
+
+        MockDelegate(payable(address(tkGasDelegate))).spoof_Nonce(1);
+        uint128 nonce = MockDelegate(payable(user)).nonce();
+        uint32 deadline = uint32(block.timestamp + 86400);
+        bytes memory args = abi.encodeWithSelector(mockToken.transfer.selector, receiver, 10 * 10 ** 18);
+        bytes memory signature =
+            _sign(USER_PRIVATE_KEY, user, nonce, deadline, address(mockToken), 0, args);
+        bytes memory paramData = abi.encodePacked(signature, bytes16(nonce), bytes4(deadline), args);
+
+        vm.prank(paymaster);
+        vm.expectRevert(TKGasDelegate.NotGasStation.selector);
+        MockDelegate(payable(user)).execute(address(mockToken), 0, paramData);
+
+        vm.prank(paymaster);
+        tkGasStation.execute(user, address(mockToken), 0, paramData);
+        assertEq(mockToken.balanceOf(receiver), 10 * 10 ** 18);
     }
 
     function testERC20Transfer() public {
@@ -238,6 +345,19 @@ contract TKGasStationTest is Test {
         // Nonce should be incremented
         uint128 newNonce = tkGasStation.getNonce(user);
         assertEq(newNonce, nonce + 1);
+    }
+
+    function testBurnSessionCounter() public {
+        uint128 counter = 1;
+        assertFalse(MockDelegate(payable(user)).checkSessionCounterExpired(counter));
+
+        bytes32 hash = tkGasStation.hashBurnSessionCounter(user, counter);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(USER_PRIVATE_KEY, hash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        tkGasStation.burnSessionCounter(user, signature, counter);
+
+        assertTrue(MockDelegate(payable(user)).checkSessionCounterExpired(counter));
     }
 
     function testReceiveReverts() public {
