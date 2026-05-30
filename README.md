@@ -61,7 +61,8 @@ All contracts are deployed at the same address across all networks:
     - The purpose of the counter is to act as a "log out" functionality to expire the session before the deadline - Burning this will invalidate all signatures with that counter 
 * The standard execution metatransactions should limit by nonce, deadline, interacting contract, and arguments
 * Batch transactions for standard execution should share one nonce per batch and one signature that includes the whole batch
-* For session batch execution, only the session limitations of sender, counter, and deadline are verified. Not the batch
+* There is no limit (other than uint8 max) on batch transaction size. It's the signer and relayer's responsibility to make sure the transaction is not too large or reverts for other reasons.
+* For session batch execution, only the session limitations of sender, counter, and deadline are verified. The batch is not verified when using session execution
 * All execute will revert if it gets a failure. Anything interacting with the gas station should be able to handle that
 * Batch transactions are capped at 20 per batch currently
 * Burning a nonce only burns the current nonce. Ones that are premade will be valid

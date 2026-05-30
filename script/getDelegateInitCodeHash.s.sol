@@ -7,7 +7,7 @@ import {TKGasDelegate} from "../src/TKGasStation/TKGasDelegate.sol";
 
 /// @custom:security-contact security@turnkey.com
 contract GetDelegateInitCodeHash is Script {
-    function run() external {
+    function run() external pure {
         // Get the creation code (TKGasDelegate has no constructor args)
         bytes memory _initCode = type(TKGasDelegate).creationCode;
         

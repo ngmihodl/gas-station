@@ -34,7 +34,6 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     bytes4 internal constant DEADLINE_EXCEEDED_SELECTOR = 0x559895a3;
     bytes4 internal constant ERC1271_MAGIC_VALUE = 0x1626ba7e;
     bytes4 internal constant INVALID_OFFSET_SELECTOR = 0x01da1572;
-    uint8 public constant MAX_BATCH_SIZE = 20;
 
     bytes32 internal constant EXECUTION_TYPEHASH = 0x06bb52ccb5d61c4f9c5baafc0affaba32c4d02864c91221ad411291324aeea2e;
     // keccak256("Execution(uint128 nonce,uint32 deadline,address to,uint256 value,bytes data)")
@@ -208,6 +207,8 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     /// @param _counterBytes 16-byte calldata-encoded session counter (uint128, left-aligned)
     function _requireCounter(bytes calldata _counterBytes) internal view {
         // This call should only happen coming from validateSession, so we can assume the counterBytes are the right length
+        // casting to 'bytes16' is safe because this will only come from validateSession and be controlled
+        // forge-lint: disable-next-line(unsafe-typecast)
         if (_getStateStorage().expiredSessionCounters[bytes16(_counterBytes)]) {
             revert InvalidCounter();
         }
@@ -898,7 +899,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     ) internal returns (bytes[] memory) {
         uint256 length = _calls.length;
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -964,7 +965,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     ) internal {
         uint256 length = _calls.length;
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -994,6 +995,8 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
             IBatchExecution.Call calldata execution = _calls[i];
             uint256 ethAmount = execution.value;
             address outputContract = execution.to;
+            // casting to 'bytes20' is safe because this is only called internally with functions that will send in the expected 20 bytes
+            // forge-lint: disable-next-line(unsafe-typecast)
             if (bytes20(outputContract) != bytes20(_outputContractBytes)) {
                 revert InvalidToContract();
             }
@@ -1023,7 +1026,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         // Execute the session transaction
         uint256 length = _calls.length;
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -1172,7 +1175,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     ) internal returns (bytes[] memory) {
         uint256 length = _calls.length;
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -1233,7 +1236,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     ) internal {
         uint256 length = _calls.length;
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -1563,7 +1566,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     ) internal returns (bytes[] memory) {
         uint256 length = _calls.length;
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -1614,7 +1617,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
     ) internal {
         uint256 length = _calls.length;
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -1677,7 +1680,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
             length := calls.length
         }
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -1746,7 +1749,7 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
             length := calls.length
         }
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 
@@ -1784,13 +1787,13 @@ contract TKGasDelegate is EIP712, IERC1155Receiver, IERC721Receiver, IERC1271, I
         }
     }
 
-    /// @dev EIP-712 hash of a batch call array; reverts if length is zero or exceeds `MAX_BATCH_SIZE`
+    /// @dev EIP-712 hash of a batch call array; reverts if length is zero
     /// @param _calls Batch of calls to hash for EIP-712 signing
     /// @return Keccak256 hash of the packed per-call struct hashes
     function _hashCallArray(IBatchExecution.Call[] calldata _calls) internal pure returns (bytes32) {
         uint256 length = _calls.length;
 
-        if (length > MAX_BATCH_SIZE || length == 0) {
+        if (length == 0) {
             revert BatchSizeInvalid();
         }
 

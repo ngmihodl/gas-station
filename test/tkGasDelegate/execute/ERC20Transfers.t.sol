@@ -13,6 +13,7 @@ contract ERC20TransfersTest is TKGasDelegateBase {
 
         vm.prank(user);
         uint256 gasBefore = gasleft();
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         mockToken.transfer(receiver, 10 * 10 ** 18);
         uint256 gasUsed = gasBefore - gasleft();
 

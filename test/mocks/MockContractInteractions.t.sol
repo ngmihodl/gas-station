@@ -8,14 +8,17 @@ contract MockContractInteractions {
         payable
         returns (uint256 amountOut)
     {
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
         // Mock swap: just transfer the amountOutMin (simulating exact output)
         amountOut = amountOutMin;
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(tokenOut).transfer(msg.sender, amountOut);
         return amountOut;
     }
 
     function mockDeposit(address token, uint256 amount) external {
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(token).transferFrom(msg.sender, address(this), amount);
     }
 
@@ -24,6 +27,7 @@ contract MockContractInteractions {
     }
 
     function mockWithdraw(address token, uint256 amount) external {
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(token).transfer(msg.sender, amount);
     }
 }

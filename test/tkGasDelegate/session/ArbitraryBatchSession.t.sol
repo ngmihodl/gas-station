@@ -262,60 +262,6 @@ contract ArbitraryBatchSessionTest is TKGasDelegateBase {
         MockDelegate(user).executeBatchSessionArbitrary(calls, data);
     }
 
-    function testArbitraryBatchSessionExecuteParameterized_MaxSizeExceeded_Reverts() public {
-        // MAX_BATCH_SIZE = 20, build 21 calls
-        uint256 maxPlusOne = MockDelegate(user).MAX_BATCH_SIZE() + 1;
-        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](maxPlusOne);
-        for (uint256 i = 0; i < maxPlusOne; i++) {
-            calls[i] = IBatchExecution.Call({
-                to: address(mockToken),
-                value: 0,
-                data: abi.encodeWithSelector(mockToken.returnPlusHoldings.selector, i)
-            });
-        }
-
-        uint128 counter = 1; // Use fixed counter value
-        uint32 deadline = uint32(block.timestamp + 1 days);
-        bytes memory signature = _signArbitrary(counter, deadline, paymaster);
-
-        // Create data manually: [signature(65)][counter(16)][deadline(4)]
-        bytes memory data = abi.encodePacked(signature, bytes16(counter), bytes4(deadline));
-
-        vm.prank(paymaster);
-        vm.expectRevert(TKGasDelegate.BatchSizeInvalid.selector);
-        MockDelegate(user).executeBatchSessionArbitrary(calls, data);
-    }
-
-    function testArbitraryBatchSessionExecuteParameterized_MaxSizeSucceeds() public {
-        // MAX_BATCH_SIZE = 20, build exactly 20 calls
-        uint256 maxSize = MockDelegate(user).MAX_BATCH_SIZE();
-        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](maxSize);
-
-        for (uint256 i = 0; i < maxSize; i++) {
-            calls[i] = IBatchExecution.Call({
-                to: address(mockToken),
-                value: 0,
-                data: abi.encodeWithSelector(mockToken.mint.selector, user, 1 ether)
-            });
-        }
-
-        uint128 counter = 1; // Use fixed counter value
-        uint32 deadline = uint32(block.timestamp + 1 days);
-        bytes memory signature = _signArbitrary(counter, deadline, paymaster);
-
-        // Create data manually: [signature(65)][counter(16)][deadline(4)]
-        bytes memory data = abi.encodePacked(signature, bytes16(counter), bytes4(deadline));
-
-        bytes[] memory results;
-        vm.prank(paymaster);
-        results = MockDelegate(user).executeBatchSessionArbitraryReturns(calls, data);
-        vm.stopPrank();
-
-        // Success is implicit - if we get here without reverting, the call succeeded
-        assertEq(results.length, maxSize);
-        assertEq(mockToken.balanceOf(user), maxSize * 1 ether);
-    }
-
     // Helper function for signing with different private key
     function _signArbitraryWithKey(uint256 _privateKey, uint128 _counter, uint32 _deadline, address _sender)
         internal
