@@ -367,52 +367,6 @@ contract TKGasStationTest is Test {
     }
 
     // Tests for newly implemented no-return functions
-    function testApproveThenExecuteNoReturn() public {
-        console.log("=== TESTING approveThenExecuteNoReturn ===");
-
-        mockToken.mint(user, 20 * 10 ** 18);
-        address receiver = makeAddr("receiver");
-
-        // Spoof nonce
-        MockDelegate(payable(address(tkGasDelegate))).spoof_Nonce(3);
-        uint128 nonce = MockDelegate(payable(user)).nonce();
-
-        // Create signature for approveThenExecute
-        bytes memory args = abi.encodeWithSelector(mockToken.transfer.selector, receiver, 10 * 10 ** 18);
-
-        vm.startPrank(user);
-        bytes32 hash = MockDelegate(payable(user)).hashApproveThenExecute(
-            nonce,
-            uint32(block.timestamp + 86400), // deadline
-            address(mockToken), // erc20
-            address(mockToken), // spender
-            10 * 10 ** 18, // approveAmount
-            address(mockToken), // outputContract
-            0, // ethAmount
-            args
-        );
-        vm.stopPrank();
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(USER_PRIVATE_KEY, hash);
-        bytes memory signature = abi.encodePacked(r, s, v);
-
-        // Build data for approveThenExecuteNoReturn (use simple format like execute)
-        bytes memory paramData =
-            abi.encodePacked(signature, bytes16(nonce), bytes4(uint32(block.timestamp + 86400)), args);
-
-        // Execute through TKGasStation
-        vm.prank(paymaster);
-        uint256 gasBefore = gasleft();
-        tkGasStation.approveThenExecute(
-            user, address(mockToken), 0, address(mockToken), address(mockToken), 10 * 10 ** 18, paramData
-        );
-        uint256 gasAfter = gasleft();
-        uint256 gasUsed = gasBefore - gasAfter;
-
-        assertEq(mockToken.balanceOf(receiver), 10 * 10 ** 18);
-        console.log("approveThenExecute gas: %s", gasUsed);
-    }
-
     function testExecuteBatchNoReturn() public {
         console.log("=== TESTING executeBatchNoReturn ===");
 
@@ -459,53 +413,6 @@ contract TKGasStationTest is Test {
         assertEq(mockToken.balanceOf(receiver1), 5 * 10 ** 18);
         assertEq(mockToken.balanceOf(receiver2), 5 * 10 ** 18);
         console.log("executeBatch gas: %s", gasUsed);
-    }
-
-    function testApproveThenExecute() public {
-        console.log("=== TESTING approveThenExecute (with return) ===");
-
-        mockToken.mint(user, 20 * 10 ** 18);
-        address receiver = makeAddr("receiver");
-
-        // Spoof nonce
-        MockDelegate(payable(address(tkGasDelegate))).spoof_Nonce(5);
-        uint128 nonce = MockDelegate(payable(user)).nonce();
-
-        // Create signature for approveThenExecute
-        bytes memory args = abi.encodeWithSelector(mockToken.transfer.selector, receiver, 10 * 10 ** 18);
-
-        vm.startPrank(user);
-        bytes32 hash = MockDelegate(payable(user)).hashApproveThenExecute(
-            nonce,
-            uint32(block.timestamp + 86400), // deadline
-            address(mockToken), // erc20
-            address(mockToken), // spender
-            10 * 10 ** 18, // approveAmount
-            address(mockToken), // outputContract
-            0, // ethAmount
-            args
-        );
-        vm.stopPrank();
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(USER_PRIVATE_KEY, hash);
-        bytes memory signature = abi.encodePacked(r, s, v);
-
-        // Build data for approveThenExecute
-        bytes memory paramData =
-            abi.encodePacked(signature, bytes16(nonce), bytes4(uint32(block.timestamp + 86400)), args);
-
-        // Execute through TKGasStation
-        vm.prank(paymaster);
-        uint256 gasBefore = gasleft();
-        bytes memory result = tkGasStation.approveThenExecuteReturns(
-            user, address(mockToken), 0, address(mockToken), address(mockToken), 10 * 10 ** 18, paramData
-        );
-        uint256 gasAfter = gasleft();
-        uint256 gasUsed = gasBefore - gasAfter;
-
-        assertEq(mockToken.balanceOf(receiver), 10 * 10 ** 18);
-        assertTrue(abi.decode(result, (bool)));
-        console.log("approveThenExecute gas: %s", gasUsed);
     }
 
     function testExecuteBatch() public {

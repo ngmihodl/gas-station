@@ -48,9 +48,8 @@ The signature must evaluate before the deadline, be on the current nonce, and va
 
 The signature types that execution mode have are:
 1. Execution(uint128 nonce,uint32 deadline,address outputContract,uint256 ethAmount,bytes arguments) - normal execution
-2. ApproveThenExecute(uint128 nonce,uint32 deadline,address erc20Contract,address spender,uint256 approveAmount,address outputContract,uint256 ethAmount,bytes arguments) - special case for approve then do a transferFrom on erc20
-3. BatchExecution(uint128 nonce,uint32 deadline,Call[] calls)Call(address to,uint256 value,bytes data) - batch execution 
-4. BurnNonce(uint128 nonce) - burns the nonce. Not limited by deadline. 
+2. BatchExecution(uint128 nonce,uint32 deadline,Call[] calls)Call(address to,uint256 value,bytes data) - batch execution 
+3. BurnNonce(uint128 nonce) - burns the nonce. Not limited by deadline. 
 
 ## Session Mode
 

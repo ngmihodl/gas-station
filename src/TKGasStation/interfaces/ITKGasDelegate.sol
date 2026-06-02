@@ -5,7 +5,7 @@ import {IBatchExecution} from "./IBatchExecution.sol";
 
 /// @title ITKGasDelegate
 /// @notice Interface for the delegation contract that executes transactions with signature-based authorization
-/// @dev Supports multiple execution modes: standard execution, batch execution, sessions, and ERC20 approve-then-execute patterns
+/// @dev Supports multiple execution modes: standard execution, batch execution, and sessions
 /// @custom:security-contact security@turnkey.com
 interface ITKGasDelegate is IBatchExecution {
     /// @notice Returns the current nonce for this delegate
@@ -54,50 +54,6 @@ interface ITKGasDelegate is IBatchExecution {
     /// @param _value The amount of ETH to send (in wei)
     /// @param _data Encoded data containing signature, nonce, deadline, and arguments
     function execute(address _to, uint256 _value, bytes calldata _data) external;
-
-    //ApproveThenExecute functions
-
-    /// @notice Approves ERC20 tokens then executes a transaction, returning the result
-    /// @param _data Encoded data: signature(65) + nonce(16) + deadline(4) + erc20(20) + spender(20) + approveAmount(32) + to(20) + value(32) + arguments
-    /// @return The return data from the executed call
-    function approveThenExecuteReturns(bytes calldata _data) external returns (bytes memory);
-
-    /// @notice Approves ERC20 tokens then executes a transaction, no return
-    /// @param _data Encoded data: signature(65) + nonce(16) + deadline(4) + erc20(20) + spender(20) + approveAmount(32) + to(20) + value(32) + arguments
-    function approveThenExecute(bytes calldata _data) external;
-
-    /// @notice Approves ERC20 tokens then executes a transaction, returns result
-    /// @param _to The contract to call after approval
-    /// @param _value The amount of ETH to send (in wei)
-    /// @param _erc20 The ERC20 token contract to approve
-    /// @param _spender The address that will be approved to spend tokens
-    /// @param _approveAmount The amount of tokens to approve
-    /// @param _data Encoded signature, nonce, deadline, and call arguments
-    /// @return The return data from the executed call
-    function approveThenExecuteReturns(
-        address _to,
-        uint256 _value,
-        address _erc20,
-        address _spender,
-        uint256 _approveAmount,
-        bytes calldata _data
-    ) external returns (bytes memory);
-
-    /// @notice Approves ERC20 tokens then executes a transaction, no return
-    /// @param _to The contract to call after approval
-    /// @param _value The amount of ETH to send (in wei)
-    /// @param _erc20 The ERC20 token contract to approve
-    /// @param _spender The address that will be approved to spend tokens
-    /// @param _approveAmount The amount of tokens to approve
-    /// @param _data Encoded signature, nonce, deadline, and call arguments
-    function approveThenExecute(
-        address _to,
-        uint256 _value,
-        address _erc20,
-        address _spender,
-        uint256 _approveAmount,
-        bytes calldata _data
-    ) external;
 
     // Batch execute functions
 
@@ -201,27 +157,6 @@ interface ITKGasDelegate is IBatchExecution {
     /// @param _nonce The nonce value to burn
     /// @return The EIP-712 compliant hash to be signed
     function hashBurnNonce(uint128 _nonce) external view returns (bytes32);
-
-    /// @notice Computes the EIP-712 typed data hash for approve-then-execute
-    /// @param _nonce The nonce for replay protection
-    /// @param _deadline The Unix timestamp after which the signature expires
-    /// @param _erc20Contract The ERC20 token to approve
-    /// @param _spender The address to approve
-    /// @param _approveAmount The amount of tokens to approve
-    /// @param _to The contract to call after approval
-    /// @param _value The amount of ETH to send (in wei)
-    /// @param _data The calldata for the transaction
-    /// @return The EIP-712 compliant hash to be signed
-    function hashApproveThenExecute(
-        uint128 _nonce,
-        uint32 _deadline,
-        address _erc20Contract,
-        address _spender,
-        uint256 _approveAmount,
-        address _to,
-        uint256 _value,
-        bytes calldata _data
-    ) external view returns (bytes32);
 
     /// @notice Computes the EIP-712 typed data hash for a session execution
     /// @param _counter The session counter for replay protection

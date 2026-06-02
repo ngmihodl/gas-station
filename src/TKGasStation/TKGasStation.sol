@@ -120,58 +120,6 @@ contract TKGasStation is ITKGasStation, Ownable {
         ITKGasDelegate(_target).execute(_to, _ethAmount, _data);
     }
 
-    // ApproveThenExecute functions
-    /// @notice Approves an ERC20 spender then executes a transaction, returning the result
-    /// @dev Validates delegation, approves ERC20 tokens, then executes the call. Useful for DEX interactions and similar patterns
-    /// @param _target The delegated EOA address that will execute the transaction
-    /// @param _to The contract or address to call after approval
-    /// @param _ethAmount The amount of ETH to send with the call (in wei)
-    /// @param _erc20 The ERC20 token contract to approve
-    /// @param _spender The address that will be approved to spend tokens
-    /// @param _approveAmount The amount of tokens to approve
-    /// @param _data The encoded function call data including signature, nonce, deadline, and arguments
-    /// @return The return data from the executed call
-    function approveThenExecuteReturns(
-        address _target,
-        address _to,
-        uint256 _ethAmount,
-        address _erc20,
-        address _spender,
-        uint256 _approveAmount,
-        bytes calldata _data
-    ) external notPaused returns (bytes memory) {
-        if (!_isDelegated(_target)) {
-            revert NotDelegated();
-        }
-        bytes memory result =
-            ITKGasDelegate(_target).approveThenExecuteReturns(_to, _ethAmount, _erc20, _spender, _approveAmount, _data);
-        return result;
-    }
-
-    /// @notice Approves an ERC20 spender then executes a transaction without returning data
-    /// @dev Validates delegation, approves ERC20 tokens, then executes the call. Gas-efficient version for calls that don't need return data
-    /// @param _target The delegated EOA address that will execute the transaction
-    /// @param _to The contract or address to call after approval
-    /// @param _ethAmount The amount of ETH to send with the call (in wei)
-    /// @param _erc20 The ERC20 token contract to approve
-    /// @param _spender The address that will be approved to spend tokens
-    /// @param _approveAmount The amount of tokens to approve
-    /// @param _data The encoded function call data including signature, nonce, deadline, and arguments
-    function approveThenExecute(
-        address _target,
-        address _to,
-        uint256 _ethAmount,
-        address _erc20,
-        address _spender,
-        uint256 _approveAmount,
-        bytes calldata _data
-    ) external notPaused {
-        if (!_isDelegated(_target)) {
-            revert NotDelegated();
-        }
-        ITKGasDelegate(_target).approveThenExecute(_to, _ethAmount, _erc20, _spender, _approveAmount, _data);
-    }
-
     // Batch execute functions
     /// @notice Executes multiple transactions in a single call and returns all results
     /// @dev Validates delegation before forwarding batch execution. All calls must succeed or the entire batch reverts
@@ -325,38 +273,6 @@ contract TKGasStation is ITKGasStation, Ownable {
             revert NotDelegated();
         }
         return ITKGasDelegate(_targetEoA).hashBurnSessionCounter(_counter);
-    }
-
-    /// @notice Computes the EIP-712 typed data hash for an approve-then-execute operation
-    /// @dev Used to generate the hash that must be signed for ERC20 approval followed by execution
-    /// @param _targetEoA The delegated EOA that will execute the transaction
-    /// @param _nonce The nonce to use for replay protection
-    /// @param _deadline The Unix timestamp after which the signature expires
-    /// @param _erc20Contract The ERC20 token contract to approve
-    /// @param _spender The address that will be approved to spend tokens
-    /// @param _approveAmount The amount of tokens to approve
-    /// @param _outputContract The contract to call after approval
-    /// @param _ethAmount The amount of ETH to send with the call (in wei)
-    /// @param _arguments The calldata to send to the output contract
-    /// @return The EIP-712 compliant hash to be signed
-    // notPaused: hash lens; callable while paused
-    function hashApproveThenExecute(
-        address _targetEoA,
-        uint128 _nonce,
-        uint32 _deadline,
-        address _erc20Contract,
-        address _spender,
-        uint256 _approveAmount,
-        address _outputContract,
-        uint256 _ethAmount,
-        bytes calldata _arguments
-    ) external view returns (bytes32) {
-        if (!_isDelegated(_targetEoA)) {
-            revert NotDelegated();
-        }
-        return ITKGasDelegate(_targetEoA).hashApproveThenExecute(
-            _nonce, _deadline, _erc20Contract, _spender, _approveAmount, _outputContract, _ethAmount, _arguments
-        );
     }
 
     /// @notice Computes the EIP-712 typed data hash for a session execution operation

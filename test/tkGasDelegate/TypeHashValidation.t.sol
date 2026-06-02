@@ -28,9 +28,6 @@ contract TypeHashValidationTest is Test {
         // Expected typehash values calculated from type strings
         bytes32 expectedExecutionTypehash =
             keccak256("Execution(uint128 nonce,uint32 deadline,address to,uint256 value,bytes data)");
-        bytes32 expectedApproveThenExecuteTypehash = keccak256(
-            "ApproveThenExecute(uint128 nonce,uint32 deadline,address erc20Contract,address spender,uint256 approveAmount,address to,uint256 value,bytes data)"
-        );
         bytes32 expectedBatchExecutionTypehash = keccak256(
             "BatchExecution(uint128 nonce,uint32 deadline,Call[] calls)Call(address to,uint256 value,bytes data)"
         );
@@ -44,7 +41,6 @@ contract TypeHashValidationTest is Test {
 
         // Actual typehash values from the contract
         bytes32 actualExecutionTypehash = delegate.external_EXECUTION_TYPEHASH();
-        bytes32 actualApproveThenExecuteTypehash = delegate.external_APPROVE_THEN_EXECUTE_TYPEHASH();
         bytes32 actualBatchExecutionTypehash = delegate.external_BATCH_EXECUTION_TYPEHASH();
         bytes32 actualCallTypehash = delegate.external_CALL_TYPEHASH();
         bytes32 actualBurnNonceTypehash = delegate.external_BURN_NONCE_TYPEHASH();
@@ -54,11 +50,6 @@ contract TypeHashValidationTest is Test {
 
         // Validate each typehash
         assertEq(actualExecutionTypehash, expectedExecutionTypehash, "EXECUTION_TYPEHASH mismatch");
-        assertEq(
-            actualApproveThenExecuteTypehash,
-            expectedApproveThenExecuteTypehash,
-            "APPROVE_THEN_EXECUTE_TYPEHASH mismatch"
-        );
         assertEq(actualBatchExecutionTypehash, expectedBatchExecutionTypehash, "BATCH_EXECUTION_TYPEHASH mismatch");
         assertEq(actualCallTypehash, expectedCallTypehash, "CALL_TYPEHASH mismatch");
         assertEq(actualBurnNonceTypehash, expectedBurnNonceTypehash, "BURN_NONCE_TYPEHASH mismatch");

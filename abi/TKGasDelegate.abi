@@ -29,120 +29,6 @@
   },
   {
     "type": "function",
-    "name": "approveThenExecute",
-    "inputs": [
-      {
-        "name": "_to",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_value",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_erc20",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_spender",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_approveAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_data",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "approveThenExecute",
-    "inputs": [
-      {
-        "name": "data",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "approveThenExecuteReturns",
-    "inputs": [
-      {
-        "name": "_to",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_value",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_erc20",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_spender",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_approveAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_data",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "approveThenExecuteReturns",
-    "inputs": [
-      {
-        "name": "_data",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "burnNonce",
     "inputs": [
       {
@@ -863,60 +749,6 @@
   },
   {
     "type": "function",
-    "name": "hashApproveThenExecute",
-    "inputs": [
-      {
-        "name": "_nonce",
-        "type": "uint128",
-        "internalType": "uint128"
-      },
-      {
-        "name": "_deadline",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "_erc20Contract",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_spender",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_approveAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_to",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_value",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_data",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "hashArbitrarySessionExecution",
     "inputs": [
       {
@@ -1328,21 +1160,6 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "error",
-    "name": "ApprovalFailed",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ApprovalReturnFalse",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ApprovalTo0Failed",
-    "inputs": []
   },
   {
     "type": "error",

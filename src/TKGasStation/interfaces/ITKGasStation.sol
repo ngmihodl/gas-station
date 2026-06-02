@@ -30,44 +30,6 @@ interface ITKGasStation is IBatchExecution {
     /// @param _data The encoded function call data including signature, nonce, deadline, and arguments
     function execute(address _target, address _to, uint256 _ethAmount, bytes calldata _data) external;
 
-    // ApproveThenExecute functions
-    /// @notice Approves an ERC20 spender then executes a transaction, returning the result
-    /// @param _target The delegated EOA address that will execute the transaction
-    /// @param _to The contract or address to call after approval
-    /// @param _ethAmount The amount of ETH to send with the call (in wei)
-    /// @param _erc20 The ERC20 token contract to approve
-    /// @param _spender The address that will be approved to spend tokens
-    /// @param _approveAmount The amount of tokens to approve
-    /// @param _data The encoded function call data including signature, nonce, deadline, and arguments
-    /// @return The return data from the executed call
-    function approveThenExecuteReturns(
-        address _target,
-        address _to,
-        uint256 _ethAmount,
-        address _erc20,
-        address _spender,
-        uint256 _approveAmount,
-        bytes calldata _data
-    ) external returns (bytes memory);
-
-    /// @notice Approves an ERC20 spender then executes a transaction without returning data
-    /// @param _target The delegated EOA address that will execute the transaction
-    /// @param _to The contract or address to call after approval
-    /// @param _ethAmount The amount of ETH to send with the call (in wei)
-    /// @param _erc20 The ERC20 token contract to approve
-    /// @param _spender The address that will be approved to spend tokens
-    /// @param _approveAmount The amount of tokens to approve
-    /// @param _data The encoded function call data including signature, nonce, deadline, and arguments
-    function approveThenExecute(
-        address _target,
-        address _to,
-        uint256 _ethAmount,
-        address _erc20,
-        address _spender,
-        uint256 _approveAmount,
-        bytes calldata _data
-    ) external;
-
     // Batch execute functions
     /// @notice Executes multiple transactions in a single call and returns all results
     /// @param _target The delegated EOA address that will execute the transactions
