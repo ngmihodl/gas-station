@@ -40,29 +40,6 @@
   },
   {
     "type": "function",
-    "name": "burnSessionCounter",
-    "inputs": [
-      {
-        "name": "_targetEoA",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_signature",
-        "type": "bytes",
-        "internalType": "bytes"
-      },
-      {
-        "name": "_counter",
-        "type": "uint128",
-        "internalType": "uint128"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "cancelOwnershipHandover",
     "inputs": [],
     "outputs": [],
@@ -250,40 +227,6 @@
   },
   {
     "type": "function",
-    "name": "hashArbitrarySessionExecution",
-    "inputs": [
-      {
-        "name": "_targetEoA",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_counter",
-        "type": "uint128",
-        "internalType": "uint128"
-      },
-      {
-        "name": "_deadline",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "_sender",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "hashBatchExecution",
     "inputs": [
       {
@@ -359,30 +302,6 @@
   },
   {
     "type": "function",
-    "name": "hashBurnSessionCounter",
-    "inputs": [
-      {
-        "name": "_targetEoA",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_counter",
-        "type": "uint128",
-        "internalType": "uint128"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "hashExecution",
     "inputs": [
       {
@@ -414,45 +333,6 @@
         "name": "_arguments",
         "type": "bytes",
         "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "hashSessionExecution",
-    "inputs": [
-      {
-        "name": "_targetEoA",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_counter",
-        "type": "uint128",
-        "internalType": "uint128"
-      },
-      {
-        "name": "_deadline",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "_sender",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_outputContract",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "outputs": [

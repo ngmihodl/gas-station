@@ -83,19 +83,6 @@ contract TKGasDelegateTestBase is Test {
         return signature;
     }
 
-    function _signBurnSessionCounter(uint256 _privateKey, address payable _publicKey, uint128 _counter)
-        internal
-        returns (bytes memory)
-    {
-        address signer = vm.addr(_privateKey);
-        vm.startPrank(signer);
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(_privateKey, MockDelegate(_publicKey).hashBurnSessionCounter(_counter));
-        bytes memory signature = abi.encodePacked(r, s, v);
-        vm.stopPrank();
-        return signature;
-    }
-
     function _constructExecuteBytesNoValue(bytes memory _signature, uint128 _nonce, address _to, bytes memory _args)
         internal
         pure
@@ -120,36 +107,6 @@ contract TKGasDelegateTestBase is Test {
         bytes20 to20 = bytes20(_to);
         bytes32 value32 = bytes32(_value);
         return abi.encodePacked(_signature, nonce16, bytes4(_deadline), to20, value32, _args);
-    }
-
-    function _signSessionExecuteWithSender(
-        uint256 _privateKey,
-        address payable _publicKey,
-        uint128 _counter,
-        uint32 _deadline,
-        address _sender,
-        address _outputContract
-    ) internal returns (bytes memory) {
-        address signer = vm.addr(_privateKey);
-        vm.startPrank(signer);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            _privateKey,
-            MockDelegate(_publicKey).hashSessionExecution(_counter, uint32(_deadline), _sender, _outputContract)
-        );
-        bytes memory signature = abi.encodePacked(r, s, v);
-        vm.stopPrank();
-        return signature;
-    }
-
-    function _constructSessionExecuteBytes(
-        bytes memory _signature,
-        uint128 _counter,
-        uint32 _deadline,
-        address _outputContract,
-        uint256 _value,
-        bytes memory _arguments
-    ) internal pure returns (bytes memory) {
-        return abi.encodePacked(_signature, _counter, _deadline, _outputContract, _value, _arguments);
     }
 
     function _signBatch(

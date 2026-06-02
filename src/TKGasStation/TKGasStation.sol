@@ -166,21 +166,6 @@ contract TKGasStation is ITKGasStation, Ownable {
         ITKGasDelegate(_targetEoA).burnNonce(_signature, _nonce);
     }
 
-    /// @notice Burns a session counter to revoke all sessions using that counter
-    /// @dev Validates delegation before allowing counter burn. Requires signature authorization from the EOA owner
-    /// @param _targetEoA The delegated EOA address whose session counter will be burned
-    /// @param _signature The signature authorizing the counter burn operation
-    /// @param _counter The session counter value to burn
-    function burnSessionCounter(address _targetEoA, bytes calldata _signature, uint128 _counter)
-        external
-        notPaused
-    {
-        if (!_isDelegated(_targetEoA)) {
-            revert NotDelegated();
-        }
-        ITKGasDelegate(_targetEoA).burnSessionCounter(_signature, _counter);
-    }
-
     /* Lense Functions */
 
     /// @notice Retrieves the current nonce for a delegated EOA
@@ -260,60 +245,6 @@ contract TKGasStation is ITKGasStation, Ownable {
             revert NotDelegated();
         }
         return ITKGasDelegate(_targetEoA).hashBurnNonce(_nonce);
-    }
-
-    /// @notice Computes the EIP-712 typed data hash for burning a session counter
-    /// @dev Used to generate the hash that must be signed to invalidate a session counter
-    /// @param _targetEoA The delegated EOA whose session counter will be burned
-    /// @param _counter The session counter value to burn
-    /// @return The EIP-712 compliant hash to be signed
-    // notPaused: hash lens; callable while paused
-    function hashBurnSessionCounter(address _targetEoA, uint128 _counter) external view returns (bytes32) {
-        if (!_isDelegated(_targetEoA)) {
-            revert NotDelegated();
-        }
-        return ITKGasDelegate(_targetEoA).hashBurnSessionCounter(_counter);
-    }
-
-    /// @notice Computes the EIP-712 typed data hash for a session execution operation
-    /// @dev Sessions allow a sender to execute transactions on behalf of the EOA to a specific contract
-    /// @param _targetEoA The delegated EOA for this session
-    /// @param _counter The session counter for replay protection (different from nonce)
-    /// @param _deadline The Unix timestamp after which the signature expires
-    /// @param _sender The address authorized to execute transactions in this session
-    /// @param _outputContract The specific contract that can be called in this session
-    /// @return The EIP-712 compliant hash to be signed
-    // notPaused: hash lens; callable while paused
-    function hashSessionExecution(
-        address _targetEoA,
-        uint128 _counter,
-        uint32 _deadline,
-        address _sender,
-        address _outputContract
-    ) external view returns (bytes32) {
-        if (!_isDelegated(_targetEoA)) {
-            revert NotDelegated();
-        }
-        return ITKGasDelegate(_targetEoA).hashSessionExecution(_counter, _deadline, _sender, _outputContract);
-    }
-
-    /// @notice Computes the EIP-712 typed data hash for an arbitrary session execution
-    /// @dev Arbitrary sessions allow a sender to execute transactions to any contract (not restricted)
-    /// @param _targetEoA The delegated EOA for this session
-    /// @param _counter The session counter for replay protection
-    /// @param _deadline The Unix timestamp after which the signature expires
-    /// @param _sender The address authorized to execute arbitrary transactions
-    /// @return The EIP-712 compliant hash to be signed
-    // notPaused: hash lens; callable while paused
-    function hashArbitrarySessionExecution(address _targetEoA, uint128 _counter, uint32 _deadline, address _sender)
-        external
-        view
-        returns (bytes32)
-    {
-        if (!_isDelegated(_targetEoA)) {
-            revert NotDelegated();
-        }
-        return ITKGasDelegate(_targetEoA).hashArbitrarySessionExecution(_counter, _deadline, _sender);
     }
 
     /// @notice Computes the EIP-712 typed data hash for a batch execution operation

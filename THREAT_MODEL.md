@@ -7,9 +7,8 @@ Protections for the paymaster to not pay for bad transactions is expected to mos
 ## Difference between the delegate and the gas station
 The delegate does all the necessary authorization checks to protect the user such as:
 - Validate the EIP-712 signature
-- Validate the nonce or counter
+- Validate the nonce
 - Validate the deadline for the transaction
-- In session mode only, validate that the msg.sender is allowed to initiate the transaction
 
 The gas station is just a helper for the paymaster to have:
 - A single interaction contract
@@ -28,15 +27,14 @@ In the future, there may be new gas stations that have extra functionality, but 
 1. User wallet signs a type-4 transaction giving the gas delegate authority
 2. Paymaster broadcasts/pays for that transaction 
 
-### Send a transaction (Once per transaction or session)
+### Send a transaction (Once per transaction)
 1. User wallet signs a metatransaction allowing the paymaster to initiate a transaction
 2. The paymaster validates the transaction as somthing it wants to pay for off-chain
 3. The transaction is initiated and paid for by the paymaster on chain 
 
 ## Modes
-It has two modes:
+It has one mode:
 1. A single action mode called "execution" that initiates one transaction with a consecutive nonce and a deadline
-2. A replayable mode called "session" with a non-consecutive counter and a deadline
 
 ## Execution Mode 
 Execution mode is limited by:
@@ -50,20 +48,6 @@ The signature types that execution mode have are:
 1. Execution(uint128 nonce,uint32 deadline,address outputContract,uint256 ethAmount,bytes arguments) - normal execution
 2. BatchExecution(uint128 nonce,uint32 deadline,Call[] calls)Call(address to,uint256 value,bytes data) - batch execution 
 3. BurnNonce(uint128 nonce) - burns the nonce. Not limited by deadline. 
-
-## Session Mode
-
-Session mode is limited by:
-- uint128 non-consecutive counter (does not get consumed on each transaction)
-- uint32 deadline
-- address sender (only this msg.sender can initiate the transaction to the delegate)
-
-The signature must evaluate before the deadline, the counter must not be burned, and only the allowed sender is allowed to initiate the transaction. No execution data is verified. 
-
-The signature types in in session mode are:
-1. SessionExecution(uint128 counter,uint32 deadline,address sender,address outputContract) - limits to a single contract
-2. ArbitrarySessionExecution(uint128 counter,uint32 deadline,address sender) - any contract (dangerous)
-3. BurnSessionCounter(uint128 counter,address sender)
 
 ## Functions and return types
 
@@ -95,9 +79,9 @@ There are two major things that can go wrong:
 The following protections are in place: 
 1. Signature validation done with solady that verifies only the user gave authorization
 2. Negative tests to ensure authorization checks are implemented
-3. A nonce/counter set up with burn functionality to prevent a transaction. A user can burn their nonces/counters directly without a paymaster
+3. A nonce set up with burn functionality to prevent a transaction. A user can burn their nonces directly without a paymaster
 4. Each nonce will increment before use. If a user delegates to a new delegate, that delegate can overwrite the memory space and reset the nonce, but at that point that delegate could just steal all the funds anyway. 
-5. A malicious transaction can be signed anyway even if the user is not using this delegate. An added risk is that a session metatransaction is signed with a long deadline, but is not used until the user deposits significant funds. This can be mitigated by burning the counter, but since the signature is not broadcasted the user would have to be aware
+5. A malicious transaction can be signed anyway even if the user is not using this delegate. An added risk is that a metatransaction is signed with a long deadline, but is not used until the user deposits significant funds. This can be mitigated by burning the nonce, but since the signature is not broadcasted the user would have to be aware
 6. All transactions are validated in batch transactions are validated as part of the type hash
 7. ERC-721 and ERC-1155 recievers are implemented. An eth reciever function is implemented.
 

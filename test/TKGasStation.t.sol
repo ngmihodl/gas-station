@@ -347,19 +347,6 @@ contract TKGasStationTest is Test {
         assertEq(newNonce, nonce + 1);
     }
 
-    function testBurnSessionCounter() public {
-        uint128 counter = 1;
-        assertFalse(MockDelegate(payable(user)).checkSessionCounterExpired(counter));
-
-        bytes32 hash = tkGasStation.hashBurnSessionCounter(user, counter);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(USER_PRIVATE_KEY, hash);
-        bytes memory signature = abi.encodePacked(r, s, v);
-
-        tkGasStation.burnSessionCounter(user, signature, counter);
-
-        assertTrue(MockDelegate(payable(user)).checkSessionCounterExpired(counter));
-    }
-
     function testReceiveReverts() public {
         vm.expectRevert();
         (bool success,) = address(tkGasStation).call{value: 1 ether}("");

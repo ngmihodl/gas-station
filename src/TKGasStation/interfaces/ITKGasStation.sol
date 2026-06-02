@@ -52,12 +52,6 @@ interface ITKGasStation is IBatchExecution {
     /// @param _nonce The nonce value to invalidate
     function burnNonce(address _targetEoA, bytes calldata _signature, uint128 _nonce) external;
 
-    /// @notice Burns a session counter to revoke all sessions using that counter
-    /// @param _targetEoA The delegated EOA address whose session counter will be burned
-    /// @param _signature The signature authorizing the counter burn operation
-    /// @param _counter The session counter value to burn
-    function burnSessionCounter(address _targetEoA, bytes calldata _signature, uint128 _counter) external;
-
     /// @notice Retrieves the current nonce for a delegated EOA
     /// @param _targetEoA The delegated EOA address to query
     /// @return The current nonce value
