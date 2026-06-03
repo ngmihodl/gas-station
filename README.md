@@ -38,6 +38,14 @@ All contracts are deployed at the same address across all networks:
 - **TKGasStation**: [0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5](https://monadscan.com/address/0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5)
 - **TKGasDelegate**: [0x2a31eF110e4Cdb9C332aA1d8633510214299c48B](https://monadscan.com/address/0x2a31eF110e4Cdb9C332aA1d8633510214299c48B)
 
+## Deployments V1.1 (Ownerless)
+
+A variant where the delegate is deployed first with its `GAS_STATION` set to `address(0)` (accepts any caller), and the gas station is deployed with `owner = address(0)` (no owner) and the delegate set at construction. Because the station has no owner, `setDelegate`/`pause`/`unpause` can never be called — the delegate binding is permanent.
+
+#### Base Mainnet
+- **TKGasStation**: [0xfDAB60F7c5Bdc7b3687C9b0a8C661EC843Caa899](https://basescan.org/address/0xfDAB60F7c5Bdc7b3687C9b0a8C661EC843Caa899)
+- **TKGasDelegate**: [0x06FB0Ee53c3D6e22697a3d6C83124E9A64b32a93](https://basescan.org/address/0x06FB0Ee53c3D6e22697a3d6C83124E9A64b32a93)
+
 ## Overall Flow
 1. The user signs a type 4 transaction to delegate access to TKGasDelegate (EIP-7702). This can be broadcasted by the paymaster
 2. The user then signs a metatransaction (EIP-712) to give permissions to the paymaster to initiate a transaction on behalf of the user
@@ -152,7 +160,14 @@ Deploys the gas station (CREATE2, owner-scoped salt), the delegate bound to that
 forge script script/DeployTKGasStationAndDelegate.s.sol:DeployTKGasStationAndDelegate --rpc-url <networkName> --broadcast --verify
 ```
 
-**Option B — manual scripts**  
+**Option B — combined ownerless script**  
+Deploys the delegate first with `GAS_STATION = address(0)`, then the gas station with `owner = address(0)` and the delegate set at construction, in one broadcast. The station is permanently ownerless, so `setDelegate`/`pause`/`unpause` can never be called.
+
+```
+forge script script/DeployTKGasDelegateAndStationNoOwner.s.sol:DeployTKGasDelegateAndStationNoOwner --rpc-url <networkName> --broadcast --verify
+```
+
+**Option C — manual scripts**  
 Order matters: station first, then delegate, then link.
 
 1. Deploy `TKGasStation` with `tkGasDelegate` initially unset (`address(0)`):
