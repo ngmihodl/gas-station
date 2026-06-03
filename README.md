@@ -1,46 +1,8 @@
 TK Gas Station lets a user have all their gas paid for by another party using metatransactions.
 
-## Deployments V1.1
-
-All contracts are deployed at the same address across all networks:
-- **TKGasStation**: `0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5`
-- **TKGasDelegate**: `0x2a31eF110e4Cdb9C332aA1d8633510214299c48B`
-
-#### Ethereum Mainnet
-- **TKGasStation**: [0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5](https://etherscan.io/address/0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5)
-- **TKGasDelegate**: [0x2a31eF110e4Cdb9C332aA1d8633510214299c48B](https://etherscan.io/address/0x2a31eF110e4Cdb9C332aA1d8633510214299c48B)
-
-#### Sepolia Testnet
-- **TKGasStation**: [0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5](https://sepolia.etherscan.io/address/0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5)
-- **TKGasDelegate**: [0x2a31eF110e4Cdb9C332aA1d8633510214299c48B](https://sepolia.etherscan.io/address/0x2a31eF110e4Cdb9C332aA1d8633510214299c48B)
-
-#### Base Mainnet
-- **TKGasStation**: [0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5](https://basescan.org/address/0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5)
-- **TKGasDelegate**: [0x2a31eF110e4Cdb9C332aA1d8633510214299c48B](https://basescan.org/address/0x2a31eF110e4Cdb9C332aA1d8633510214299c48B)
-
-#### Polygon Mainnet
-- **TKGasStation**: [0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5](https://polygonscan.com/address/0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5)
-- **TKGasDelegate**: [0x2a31eF110e4Cdb9C332aA1d8633510214299c48B](https://polygonscan.com/address/0x2a31eF110e4Cdb9C332aA1d8633510214299c48B)
-
-#### Celo Mainnet
-- **TKGasStation**: [0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5](https://celoscan.io/address/0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5)
-- **TKGasDelegate**: [0x2a31eF110e4Cdb9C332aA1d8633510214299c48B](https://celoscan.io/address/0x2a31eF110e4Cdb9C332aA1d8633510214299c48B)
-
-#### Arbitrum One
-- **TKGasStation**: [0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5](https://arbiscan.io/address/0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5)
-- **TKGasDelegate**: [0x2a31eF110e4Cdb9C332aA1d8633510214299c48B](https://arbiscan.io/address/0x2a31eF110e4Cdb9C332aA1d8633510214299c48B)
-
-#### Optimism
-- **TKGasStation**: [0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5](https://optimistic.etherscan.io/address/0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5)
-- **TKGasDelegate**: [0x2a31eF110e4Cdb9C332aA1d8633510214299c48B](https://optimistic.etherscan.io/address/0x2a31eF110e4Cdb9C332aA1d8633510214299c48B)
-
-#### Monad Mainnet
-- **TKGasStation**: [0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5](https://monadscan.com/address/0x1cBBD58E521e1133F09E2Ba207e3e75c4DB404D5)
-- **TKGasDelegate**: [0x2a31eF110e4Cdb9C332aA1d8633510214299c48B](https://monadscan.com/address/0x2a31eF110e4Cdb9C332aA1d8633510214299c48B)
-
 ## Deployments V1.1 (Ownerless)
 
-A variant where the delegate is deployed first with its `GAS_STATION` set to `address(0)` (accepts any caller), and the gas station is deployed with `owner = address(0)` (no owner) and the delegate set at construction. Because the station has no owner, `setDelegate`/`pause`/`unpause` can never be called — the delegate binding is permanent.
+A variant where the delegate is deployed first with its `GAS_STATION` set to `address(0)` (accepts any caller), and the gas station is deployed with `owner = address(0)` (no owner) and the delegate set at construction. Because the station has no owner, `setDelegate`/`pause`/`unpause` can never be called.
 
 #### Base Mainnet
 - **TKGasStation**: [0xfDAB60F7c5Bdc7b3687C9b0a8C661EC843Caa899](https://basescan.org/address/0xfDAB60F7c5Bdc7b3687C9b0a8C661EC843Caa899)
