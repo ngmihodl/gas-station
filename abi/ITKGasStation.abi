@@ -1,111 +1,6 @@
 [
   {
     "type": "function",
-    "name": "TK_GAS_DELEGATE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "approveThenExecute",
-    "inputs": [
-      {
-        "name": "_target",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_to",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_ethAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_erc20",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_spender",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_approveAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_data",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "approveThenExecuteReturns",
-    "inputs": [
-      {
-        "name": "_target",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_to",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_ethAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_erc20",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_spender",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_approveAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_data",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "burnNonce",
     "inputs": [
       {
@@ -309,6 +204,19 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tkGasDelegate",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"

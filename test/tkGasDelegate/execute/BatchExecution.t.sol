@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import {IBatchExecution} from "../../../src/TKGasStation/interfaces/IBatchExecution.sol";
-import {ITKGasDelegate} from "../../../src/TKGasStation/interfaces/ITKGasDelegate.sol";
 import {TKGasDelegateTestBase as TKGasDelegateBase} from "../TKGasDelegateTestBase.t.sol";
 import {MockDelegate} from "../../mocks/MockDelegate.t.sol";
 import {console} from "forge-std/console.sol";
 import {TKGasDelegate} from "../../../src/TKGasStation/TKGasDelegate.sol";
 
 contract BatchExecutionTest is TKGasDelegateBase {
+    /// @dev executeBatch((address,uint256,bytes)[],bytes)
+    bytes4 internal constant EXECUTE_BATCH_CALLS_AND_BYTES_SELECTOR = 0x5885bbcf;
+
     function testExecuteBatchBytesGas() public {
         // Prepare calls: 2 ERC20 mints to user and a pure view call
         IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](3);
@@ -64,6 +66,31 @@ contract BatchExecutionTest is TKGasDelegateBase {
         // Log gas
         console.log("=== executeBatch(bytes) Gas ===");
         console.log("Total Gas Used: %s", gasUsed);
+    }
+
+    function testMaliciousOffsetOverflow() public {
+        mockToken.mint(user, 1 ether);
+        address attacker = makeAddr("maliciousOffsetAttacker");
+
+        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](1);
+        calls[0] = IBatchExecution.Call({to: address(mockToken), value: 0, data: ""});
+
+        uint128 batchNonce = MockDelegate(user).nonce();
+        uint32 deadline = uint32(block.timestamp + 1 days);
+        bytes memory signature = _signBatch(USER_PRIVATE_KEY, user, batchNonce, deadline, calls);
+
+        uint256 victimBefore = mockToken.balanceOf(user);
+        uint256 attackerBefore = mockToken.balanceOf(attacker);
+        bytes memory payload = abi.encodeCall(mockToken.transfer, (attacker, victimBefore));
+        bytes memory forgedCalldata =
+            _buildForgedExecuteBatchCalldata(signature, batchNonce, deadline, payload, address(mockToken));
+
+        vm.prank(paymaster);
+        (bool ok, ) = user.call(forgedCalldata);
+
+        assertFalse(ok, "should revert");
+        assertEq(mockToken.balanceOf(user), victimBefore);
+        assertEq(mockToken.balanceOf(attacker), attackerBefore);
     }
 
     function testExecuteBatchBytesGas_SingleTransfer() public {
@@ -202,61 +229,6 @@ contract BatchExecutionTest is TKGasDelegateBase {
         MockDelegate(user).executeBatch(data);
     }
 
-    function testExecuteBatchMaxSizeExceededReverts() public {
-        // MAX_BATCH_SIZE = 20, build 21 calls
-        uint256 maxPlusOne = MockDelegate(user).MAX_BATCH_SIZE() + 1;
-        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](maxPlusOne);
-        for (uint256 i = 0; i < maxPlusOne; i++) {
-            calls[i] = IBatchExecution.Call({
-                to: address(mockToken),
-                value: 0,
-                data: abi.encodeWithSelector(mockToken.returnPlusHoldings.selector, i)
-            });
-        }
-        uint128 nonce = MockDelegate(user).nonce();
-        bytes memory signature = _signBatch(USER_PRIVATE_KEY, user, nonce, uint32(block.timestamp + 86400), calls);
-        bytes memory data =
-            abi.encodePacked(signature, bytes16(nonce), bytes4(uint32(block.timestamp + 86400)), abi.encode(calls));
-
-        vm.prank(paymaster);
-        vm.expectRevert(TKGasDelegate.BatchSizeInvalid.selector);
-        MockDelegate(user).executeBatch(data);
-    }
-
-    function testExecuteBatchMaxSizeSucceeds() public {
-        // MAX_BATCH_SIZE = 20, build exactly 20 calls
-        uint256 maxSize = MockDelegate(user).MAX_BATCH_SIZE();
-        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](maxSize);
-
-        for (uint256 i = 0; i < maxSize; i++) {
-            calls[i] = IBatchExecution.Call({
-                to: address(mockToken),
-                value: 0,
-                data: abi.encodeWithSelector(mockToken.mint.selector, user, 1 ether)
-            });
-        }
-
-        uint128 nonce = MockDelegate(user).nonce();
-        bytes memory signature = _signBatch(USER_PRIVATE_KEY, user, nonce, uint32(block.timestamp + 86400), calls);
-        bytes memory data =
-            abi.encodePacked(signature, bytes16(nonce), bytes4(uint32(block.timestamp + 86400)), abi.encode(calls));
-
-        bytes[] memory results;
-        vm.prank(paymaster);
-        uint256 gasBefore = gasleft();
-        results = MockDelegate(user).executeBatchReturns(data);
-        uint256 gasUsed = gasBefore - gasleft();
-        vm.stopPrank();
-
-        // Success is implicit - if we get here without reverting, the call succeeded
-        assertEq(results.length, maxSize);
-        assertEq(mockToken.balanceOf(user), maxSize * 1 ether);
-
-        console.log("=== executeBatch Max Size Gas ===");
-        console.log("Total Gas Used: %s", gasUsed);
-        console.log("Batch Size: %s", maxSize);
-    }
-
     function testExecuteBatchWrongNonceReverts() public {
         MockDelegate(user).spoof_Nonce(20);
         // Prepare calls
@@ -326,71 +298,6 @@ contract BatchExecutionTest is TKGasDelegateBase {
         vm.prank(paymaster);
         vm.expectRevert(TKGasDelegate.NotSelf.selector);
         MockDelegate(user).executeBatch(data);
-    }
-
-    function testExecuteBatchFallbackNoReturn() public {
-        // Build a simple batch of 1 call
-        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](2);
-        calls[0] = IBatchExecution.Call({
-            to: address(mockToken),
-            value: 0,
-            data: abi.encodeWithSelector(mockToken.mint.selector, user, 1 ether)
-        });
-        calls[1] = IBatchExecution.Call({
-            to: address(mockToken),
-            value: 0,
-            data: abi.encodeWithSelector(mockToken.mint.selector, user, 2 ether)
-        });
-
-        // Record initial balance
-        uint256 initialBalance = mockToken.balanceOf(user);
-
-        uint128 nonce = MockDelegate(user).nonce();
-        bytes memory signature = _signBatch(USER_PRIVATE_KEY, user, nonce, uint32(block.timestamp + 86400), calls);
-        bytes memory fallbackData = _constructFallbackCalldata(
-            bytes1(0x20), signature, nonce, uint32(block.timestamp + 86400), abi.encode(calls)
-        );
-
-        vm.prank(paymaster);
-        (bool success,) = user.call(fallbackData);
-        assertTrue(success);
-
-        // Assert that the user received the minted tokens
-        assertEq(mockToken.balanceOf(user), initialBalance + 1 ether + 2 ether);
-    }
-
-    function testExecuteBatchFallbackWithReturn() public {
-        // Build a simple batch of 1 call
-        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](2);
-        calls[0] = IBatchExecution.Call({
-            to: address(mockToken),
-            value: 0,
-            data: abi.encodeWithSelector(mockToken.mint.selector, user, 1 ether)
-        });
-        calls[1] = IBatchExecution.Call({
-            to: address(mockToken),
-            value: 0,
-            data: abi.encodeWithSelector(mockToken.mint.selector, user, 2 ether)
-        });
-
-        // Record initial balance
-        uint256 initialBalance = mockToken.balanceOf(user);
-
-        uint128 nonce = MockDelegate(user).nonce();
-        bytes memory signature = _signBatch(USER_PRIVATE_KEY, user, nonce, uint32(block.timestamp + 86400), calls);
-        bytes memory fallbackData = _constructFallbackCalldata(
-            bytes1(0x21), signature, nonce, uint32(block.timestamp + 86400), abi.encode(calls)
-        );
-
-        vm.prank(paymaster);
-        (bool success, bytes memory result) = user.call(fallbackData);
-        assertTrue(success);
-
-        // Assert that the user received the minted tokens
-        assertEq(mockToken.balanceOf(user), initialBalance + 1 ether + 2 ether);
-        bytes[] memory results = abi.decode(result, (bytes[]));
-        assertEq(results[0], abi.encode(1 ether));
-        assertEq(results[1], abi.encode(2 ether));
     }
 
     // ========== PARAMETERIZED VERSIONS ==========
@@ -517,58 +424,6 @@ contract BatchExecutionTest is TKGasDelegateBase {
         vm.prank(paymaster);
         vm.expectRevert();
         MockDelegate(user).executeBatch(calls, data);
-    }
-
-    function testExecuteBatchParameterizedMaxSizeExceededReverts() public {
-        // MAX_BATCH_SIZE = 20, build 21 calls
-        uint256 maxPlusOne = MockDelegate(user).MAX_BATCH_SIZE() + 1;
-        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](maxPlusOne);
-        for (uint256 i = 0; i < maxPlusOne; i++) {
-            calls[i] = IBatchExecution.Call({
-                to: address(mockToken),
-                value: 0,
-                data: abi.encodeWithSelector(mockToken.returnPlusHoldings.selector, i)
-            });
-        }
-        uint128 nonce = MockDelegate(user).nonce();
-        bytes memory signature = _signBatch(USER_PRIVATE_KEY, user, nonce, uint32(block.timestamp + 86400), calls);
-        bytes memory data = abi.encodePacked(signature, bytes16(nonce), bytes4(uint32(block.timestamp + 86400)));
-        vm.prank(paymaster);
-        vm.expectRevert(TKGasDelegate.BatchSizeInvalid.selector);
-        MockDelegate(user).executeBatch(calls, data);
-    }
-
-    function testExecuteBatchParameterizedMaxSizeSucceeds() public {
-        // MAX_BATCH_SIZE = 20, build exactly 20 calls
-        uint256 maxSize = MockDelegate(user).MAX_BATCH_SIZE();
-        IBatchExecution.Call[] memory calls = new IBatchExecution.Call[](maxSize);
-
-        for (uint256 i = 0; i < maxSize; i++) {
-            calls[i] = IBatchExecution.Call({
-                to: address(mockToken),
-                value: 0,
-                data: abi.encodeWithSelector(mockToken.mint.selector, user, 1 ether)
-            });
-        }
-
-        uint128 nonce = MockDelegate(user).nonce();
-        bytes memory signature = _signBatch(USER_PRIVATE_KEY, user, nonce, uint32(block.timestamp + 86400), calls);
-
-        bytes memory data = abi.encodePacked(signature, bytes16(nonce), bytes4(uint32(block.timestamp + 86400)));
-        bytes[] memory results;
-        vm.prank(paymaster);
-        uint256 gasBefore = gasleft();
-        results = MockDelegate(user).executeBatchReturns(calls, data);
-        uint256 gasUsed = gasBefore - gasleft();
-        vm.stopPrank();
-
-        // Success is implicit - if we get here without reverting, the call succeeded
-        assertEq(results.length, maxSize);
-        assertEq(mockToken.balanceOf(user), maxSize * 1 ether);
-
-        console.log("=== executeBatch(IBatchExecution.Call[], bytes) Max Size Gas ===");
-        console.log("Total Gas Used: %s", gasUsed);
-        console.log("Batch Size: %s", maxSize);
     }
 
     function testExecuteBatchParameterizedWrongNonceReverts() public {
@@ -880,5 +735,42 @@ contract BatchExecutionTest is TKGasDelegateBase {
 
         assertEq(mockToken.allowance(user, receiver), 0 ether);
         assertEq(mockToken.balanceOf(receiver), 0 ether);
+    }
+
+    function _buildForgedExecuteBatchCalldata(
+        bytes memory signature,
+        uint128 nonceValue,
+        uint32 deadline,
+        bytes memory payload,
+        address callTo
+    ) internal pure returns (bytes memory) {
+        uint256 dataOffset = 0x40;
+        uint256 payloadBlobOffset = 0x60;
+        uint256 payloadPadding = (0x20 - (payload.length % 0x20)) % 0x20;
+        bytes memory dataContent = bytes.concat(
+            signature,
+            abi.encodePacked(nonceValue),
+            abi.encodePacked(deadline),
+            new bytes(payloadBlobOffset - 85),
+            abi.encode(payload.length),
+            payload,
+            new bytes(payloadPadding)
+        );
+
+        uint256 callsOffset = dataOffset + 0x20 + dataContent.length;
+        uint256 startN = 4 + callsOffset + 0x40;
+        uint256 payloadLengthSlot = 4 + dataOffset + 0x20 + payloadBlobOffset;
+        uint256 delta = startN - payloadLengthSlot;
+        bytes32 relOffsetWord = bytes32(type(uint256).max - (delta - 1));
+
+        return bytes.concat(
+            EXECUTE_BATCH_CALLS_AND_BYTES_SELECTOR,
+            abi.encode(callsOffset, dataOffset),
+            abi.encode(uint256(dataContent.length)),
+            dataContent,
+            abi.encode(
+                uint256(1), uint256(0x20), bytes32(uint256(uint160(callTo))), uint256(0), relOffsetWord, uint256(0)
+            )
+        );
     }
 }

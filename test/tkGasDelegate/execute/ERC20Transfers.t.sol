@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
 import {MockDelegate} from "../../mocks/MockDelegate.t.sol";
@@ -13,6 +13,7 @@ contract ERC20TransfersTest is TKGasDelegateBase {
 
         vm.prank(user);
         uint256 gasBefore = gasleft();
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         mockToken.transfer(receiver, 10 * 10 ** 18);
         uint256 gasUsed = gasBefore - gasleft();
 
@@ -152,119 +153,6 @@ contract ERC20TransfersTest is TKGasDelegateBase {
         vm.prank(paymaster);
         vm.expectRevert(TKGasDelegate.NotSelf.selector);
         MockDelegate(user).execute(executeData);
-    }
-
-    function testFallbackExecuteSendERC20WithReturn() public {
-        mockToken.mint(user, 20 * 10 ** 18);
-        address receiver = makeAddr("receiver");
-        MockDelegate(user).spoof_Nonce(1);
-        uint128 nonce = MockDelegate(user).nonce();
-        bytes memory signature = _signExecute(
-            USER_PRIVATE_KEY,
-            user,
-            nonce,
-            uint32(block.timestamp + 86400),
-            address(mockToken),
-            0,
-            abi.encodeWithSelector(mockToken.transfer.selector, receiver, 10 * 10 ** 18)
-        );
-
-        console.log("=== Signature ===");
-        console.log("Signature: %s", vm.toString(signature));
-        console.log("=== Mock contract address ===");
-        console.log("Mock contract address: %s", address(mockToken));
-
-        bytes memory fallbackData = _constructFallbackCalldata(
-            bytes1(0x01),
-            signature,
-            nonce,
-            uint32(block.timestamp + 86400),
-            abi.encodePacked(
-                address(mockToken),
-                _fallbackEncodeEth(0),
-                abi.encodeWithSelector(mockToken.transfer.selector, receiver, uint256(10 * 10 ** 18))
-            )
-        );
-
-        console.log("=== Fallback Function Calldata ===");
-        console.log("Calldata length: %s bytes", fallbackData.length);
-        console.log("Calldata (hex): %s", vm.toString(fallbackData));
-        console.log("Calldata (bytes): [%s]", _bytesToHexString(fallbackData));
-
-        bool success;
-        bytes memory result;
-        vm.prank(paymaster);
-        uint256 gasBefore = gasleft();
-        (success, result) = user.call(fallbackData);
-        uint256 gasUsed = gasBefore - gasleft();
-        vm.stopPrank();
-
-        uint256 receiverBalance = mockToken.balanceOf(receiver);
-        assertEq(receiverBalance, 10 * 10 ** 18);
-        // Success is implicit - if we get here without reverting, the call succeeded
-        uint128 currentNonce = MockDelegate(user).nonce();
-        assertEq(currentNonce, nonce + 1);
-        abi.decode(result, (bool));
-
-        console.log("=== Fallback Function ERC20 Transfer Analysis ===");
-        console.log("Total Gas Used: %s", gasUsed);
-        console.log("Transfer Amount: %s", uint256(10 * 10 ** 18));
-    }
-
-    function testFallbackExecuteSendERC20NoReturn() public {
-        mockToken.mint(user, 20 * 10 ** 18);
-        address receiver = makeAddr("receiver");
-        MockDelegate(user).spoof_Nonce(1);
-        uint128 nonce = MockDelegate(user).nonce();
-        bytes memory signature = _signExecute(
-            USER_PRIVATE_KEY,
-            user,
-            nonce,
-            uint32(block.timestamp + 86400),
-            address(mockToken),
-            0,
-            abi.encodeWithSelector(mockToken.transfer.selector, receiver, 10 * 10 ** 18)
-        );
-
-        console.log("=== Signature ===");
-        console.log("Signature: %s", vm.toString(signature));
-        console.log("=== Mock contract address ===");
-        console.log("Mock contract address: %s", address(mockToken));
-
-        bytes memory fallbackData = _constructFallbackCalldata(
-            bytes1(0x00),
-            signature,
-            nonce,
-            uint32(block.timestamp + 86400),
-            abi.encodePacked(
-                address(mockToken),
-                _fallbackEncodeEth(0),
-                abi.encodeWithSelector(mockToken.transfer.selector, receiver, uint256(10 * 10 ** 18))
-            )
-        );
-
-        console.log("=== Fallback Function Calldata ===");
-        console.log("Calldata length: %s bytes", fallbackData.length);
-        console.log("Calldata (hex): %s", vm.toString(fallbackData));
-        console.log("Calldata (bytes): [%s]", _bytesToHexString(fallbackData));
-
-        bool success;
-        bytes memory result;
-        vm.prank(paymaster);
-        uint256 gasBefore = gasleft();
-        (success, result) = user.call(fallbackData);
-        uint256 gasUsed = gasBefore - gasleft();
-        vm.stopPrank();
-
-        uint256 receiverBalance = mockToken.balanceOf(receiver);
-        assertEq(receiverBalance, 10 * 10 ** 18);
-        // Success is implicit - if we get here without reverting, the call succeeded
-        uint128 currentNonce = MockDelegate(user).nonce();
-        assertEq(currentNonce, nonce + 1);
-
-        console.log("=== Fallback Function ERC20 Transfer Analysis ===");
-        console.log("Total Gas Used: %s", gasUsed);
-        console.log("Transfer Amount: %s", uint256(10 * 10 ** 18));
     }
 
     // ========== PARAMETERIZED VERSIONS ==========
@@ -498,51 +386,22 @@ contract ERC20TransfersTest is TKGasDelegateBase {
         MockDelegate(user).executeNoValueNoReturn(data1);
         uint256 gasUsedNoReturn = gasBefore - gasleft();
 
-        // Test fallback version (0x00)
-        MockDelegate(user).spoof_Nonce(1);
-        uint128 nonce2 = MockDelegate(user).nonce();
-        address receiver2 = makeAddr("receiver2");
-        bytes memory args2 = abi.encodeWithSelector(mockToken.transfer.selector, receiver2, 10 * 10 ** 18);
-        bytes memory signature2 =
-            _signExecute(USER_PRIVATE_KEY, user, nonce2, uint32(block.timestamp + 86400), address(mockToken), 0, args2);
-
-        bytes memory fallbackData = _constructFallbackCalldata(
-            bytes1(0x00),
-            signature2,
-            nonce2,
-            uint32(block.timestamp + 86400),
-            abi.encodePacked(address(mockToken), _fallbackEncodeEth(0), args2)
-        );
-
-        vm.prank(paymaster);
-        gasBefore = gasleft();
-        /* solc-disable-next-line */
-        address(MockDelegate(user)).call(fallbackData);
-        uint256 gasUsedFallback = gasBefore - gasleft();
-
         // Assertions
-        // First execution succeeds - if we get here without reverting, it succeeded
         assertEq(mockToken.balanceOf(receiver1), 10 * 10 ** 18);
-        assertEq(mockToken.balanceOf(receiver2), 10 * 10 ** 18);
 
         // Gas comparison results
         console.log("executeNoValueNoReturn gas:", gasUsedNoReturn);
         console.log("execute(bytes) gas: 31619 (from testExecuteBytesERC20Gas)");
         console.log("execute(bytes) no value gas: 51596 (from testExecuteBytesERC20GasNoValue)");
         console.log("execute(address, uint256, bytes) gas: 51809 (from testExecuteNoValueParameterizedERC20Gas)");
-        console.log("Fallback (0x00) gas:", gasUsedFallback);
 
-        // Calculate differences
         uint256 diffVsExecuteBytes = gasUsedNoReturn > 31619 ? gasUsedNoReturn - 31619 : 31619 - gasUsedNoReturn;
         uint256 diffVsExecuteBytesNoValue = gasUsedNoReturn > 51596 ? gasUsedNoReturn - 51596 : 51596 - gasUsedNoReturn;
         uint256 diffVsExecuteNoValueParam = gasUsedNoReturn > 51809 ? gasUsedNoReturn - 51809 : 51809 - gasUsedNoReturn;
-        uint256 diffVsFallback =
-            gasUsedNoReturn > gasUsedFallback ? gasUsedNoReturn - gasUsedFallback : gasUsedFallback - gasUsedNoReturn;
 
         console.log("Gas difference vs execute(bytes):", diffVsExecuteBytes);
         console.log("Gas difference vs execute(bytes) no value:", diffVsExecuteBytesNoValue);
         console.log("Gas difference vs execute(address, uint256, bytes):", diffVsExecuteNoValueParam);
-        console.log("Gas difference vs Fallback (0x00):", diffVsFallback);
 
         console.log("executeNoValueNoReturn vs execute(bytes): %s efficient", gasUsedNoReturn < 31619 ? "more" : "less");
         console.log(
@@ -551,10 +410,6 @@ contract ERC20TransfersTest is TKGasDelegateBase {
         console.log(
             "executeNoValueNoReturn vs execute(address, uint256, bytes): %s efficient",
             gasUsedNoReturn < 51809 ? "more" : "less"
-        );
-        console.log(
-            "executeNoValueNoReturn vs Fallback (0x00): %s efficient",
-            gasUsedNoReturn < gasUsedFallback ? "more" : "less"
         );
     }
 

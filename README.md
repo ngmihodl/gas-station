@@ -1,62 +1,12 @@
 TK Gas Station lets a user have all their gas paid for by another party using metatransactions.
 
-## Deployments
+## Deployments V1.1 (Ownerless)
 
-All contracts are deployed at the same address across all networks:
-- **TKGasStation**: `0x00000000008c57a1CE37836a5e9d36759D070d8c`
-- **TKGasDelegate**: `0x000066a00056CD44008768E2aF00696e19A30084`
-
-#### Ethereum Mainnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://etherscan.io/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://etherscan.io/address/0x000066a00056CD44008768E2aF00696e19A30084)
+A variant where the delegate is deployed first with its `GAS_STATION` set to `address(0)` (accepts any caller), and the gas station is deployed with `owner = address(0)` (no owner) and the delegate set at construction. Because the station has no owner, `setDelegate`/`pause`/`unpause` can never be called.
 
 #### Base Mainnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://basescan.org/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://basescan.org/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Sepolia Testnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://sepolia.etherscan.io/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://sepolia.etherscan.io/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Base Sepolia Testnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://sepolia.basescan.org/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://sepolia.basescan.org/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Polygon Mainnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://polygonscan.com/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://polygonscan.com/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Celo Mainnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://celoscan.io/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://celoscan.io/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Arbitrum One
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://arbiscan.io/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://arbiscan.io/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Arbitrum Sepolia Testnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://sepolia.arbiscan.io/address/0x00000000008c57a1ce37836a5e9d36759d070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://sepolia.arbiscan.io/address/0x000066a00056CD44008768E2aF00696e19A30084)   
-
-#### Optimism
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://optimistic.etherscan.io/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://optimistic.etherscan.io/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Unichain Mainnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://uniscan.xyz/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://uniscan.xyz/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Monad Mainnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://monadscan.com/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://monadscan.com/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Polygon Amoy Testnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://amoy.polygonscan.com/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://amoy.polygonscan.com/address/0x000066a00056CD44008768E2aF00696e19A30084)
-
-#### Monad Testnet
-- **TKGasStation**: [0x00000000008c57a1CE37836a5e9d36759D070d8c](https://testnet.monadexplorer.com/address/0x00000000008c57a1CE37836a5e9d36759D070d8c)
-- **TKGasDelegate**: [0x000066a00056CD44008768E2aF00696e19A30084](https://testnet.monadexplorer.com/address/0x000066a00056CD44008768E2aF00696e19A30084)
+- **TKGasStation**: [0xfDAB60F7c5Bdc7b3687C9b0a8C661EC843Caa899](https://basescan.org/address/0xfDAB60F7c5Bdc7b3687C9b0a8C661EC843Caa899)
+- **TKGasDelegate**: [0x06FB0Ee53c3D6e22697a3d6C83124E9A64b32a93](https://basescan.org/address/0x06FB0Ee53c3D6e22697a3d6C83124E9A64b32a93)
 
 ## Overall Flow
 1. The user signs a type 4 transaction to delegate access to TKGasDelegate (EIP-7702). This can be broadcasted by the paymaster
@@ -68,55 +18,25 @@ All contracts are deployed at the same address across all networks:
 * Contracts are immutable
 * There are no re-entry protections by design. Re-entrancy should be guarded by the contracts the user is interacting with (as in a normal EoA)
     - The nonce for execute and batch execute will naturally protect against re-entrancy, but this should not be relied upon 
-    - There is no built in re-entrancy protection for session based auth since it is meant to be replayed
 * Both the delegate and the gas station are not using DRY. This is a purpsoseful design choice to save gas during run time
 * Paymasters (and anyone else) can interact with TKGasDelegate through the TKGasStation or directly through the delegate itself
 * The gas station has helper external functions for hashing for the type hash. This is just to help for external development and testing, and are not used during execution
-* There are session metatransactions that give one particular wallet unlimited execution on behalf of a user
-    - This is a footgun and should be used carefully
-    - This limits to only one wallet in the typehash
-    - Each one has a counter 
-    - Multiple signatures (sessions) can be on a single counter
-    - The counter is non sequential
-    - The purpose of the counter is to act as a "log out" functionality to expire the session before the deadline - Burning this will invalidate all signatures with that counter 
 * The standard execution metatransactions should limit by nonce, deadline, interacting contract, and arguments
 * Batch transactions for standard execution should share one nonce per batch and one signature that includes the whole batch
-* For session batch execution, only the session limitations of sender, counter, and deadline are verified. Not the batch
+* There is no limit (other than uint8 max) on batch transaction size. It's the signer and relayer's responsibility to make sure the transaction is not too large or reverts for other reasons.
 * All execute will revert if it gets a failure. Anything interacting with the gas station should be able to handle that
-* Batch transactions are capped at 20 per batch currently
 * Burning a nonce only burns the current nonce. Ones that are premade will be valid
 * Nonces are sequential and can only be used sequentially
-* A user can burn their own counter or nonce without a 712
+* A user can burn their own nonce without a 712
 * The gas delegate implements recievers for ERC-721 and ERC-1155
-* The Gas station cannot use session based auth. This is because authorizing the gas station to send arbitrary messages would enable anyone to send arbitrary messages through the gas station
 * There is no requirement for the paymaster to interact with the gas station. The paymaster can interact with the delegate directly if they trust that the user is using the right delegate by doing off-chain validation. 
 * The delegate does not implement EIP-7821[https://eips.ethereum.org/EIPS/eip-7821] as described since the execute function is _payable_. As a security measure to not drain the paymaster, no execute functions by design are allowed to be payable
-* An attack that can be pulled off to reset/modify the nonce/counters is as follows:
+* An attack that can be pulled off to reset/modify the nonce is as follows:
     1. A user delegates and uses it as normal. The nonce iterates up
     2. The user then delegates to a contract that changes the nonce or resets it to 0 since that storage slot stays with the user's address, not the delegated contract
     3. The user then delegates back to TKGasDelegate
     4. Since the nonce is reset, old transactions can be replayed.
     This is accepted because we have a deadline transactions and on step 2, if you delegate to a malicious contract the attacker already has control.  
-
-## Packing data for calling the fallback function in the delegate
-
-The fall back function can call the execute and session execution functions. It does not call the burn functions 
-
-To use it:
-The first byte should be a null byte 0x00. No function selector in the delegate or the gas station starts with a null byte, so there would be no name collision. The gas station will just parse the target contract and then call the delegate fall back function. 
-The second byte is a combination of the first nibble that acts as the function selector and the second nibble that acts as a boolean that says whether or not to return values or not
-The eth value is 10 bytes, a uint80
-
-Function selectors without to return or not:
-* 00 - Execute
-* 10 - ApproveThenExecute
-* 20 - ExecuteBatch
-* 30 - ExecuteSession
-* 40 - ExecuteBatchSession
-* 50 - ExecuteArbitrarySession
-* 60 - ExecuteBatchArbitrarySession
-
-For example, a normal execute with no return would be 0x00. A normal execute with a return would be 0x01. 
 
 # Reporting A Vulnerability/Bug Bounty
 
@@ -167,16 +87,23 @@ Create the file
 cp ./env.example ./.env
 ```
 
-In the file add your keys:
+In the file add your keys (and contract addresses **after** you deploy — see step 5):
+
 ```
 PRIVATE_KEY=your_private_key_here
 
 # API Key for contract verification (works for both Base and Ethereum)
 ETHERSCAN_API_KEY=your_etherscan_api_key_here
+
+# Filled in order when using the per-step scripts (not needed for the combined script):
+# 1) After deploying the gas station — required before `DeployTKGasDelegate`
+TK_GAS_STATION=
+# 2) After deploying the delegate — required before `SetGasStationDelegate`
+TK_GAS_DELEGATE=
 ```
 
 
-5. Install and deploy
+5. Install, build, and deploy
 
 ``` 
 cd ./gas-station
@@ -184,11 +111,49 @@ cd ./gas-station
 forge install
 
 forge build
+```
 
-forge script script/DeployTKGasDelegate.s.sol:DeployTKGasDelegate --rpc-url <networkName> --broadcast --verify
+Deploy using **either** the combined script (simplest) **or** the three-step flow.
 
+**Option A — combined script (recommended)**  
+Deploys the gas station (CREATE2, owner-scoped salt), the delegate bound to that station, and calls `setDelegate` in one broadcast. Copy the logged lines into `.env` for other tooling.
+
+```
+forge script script/DeployTKGasStationAndDelegate.s.sol:DeployTKGasStationAndDelegate --rpc-url <networkName> --broadcast --verify
+```
+
+**Option B — combined ownerless script**  
+Deploys the delegate first with `GAS_STATION = address(0)`, then the gas station with `owner = address(0)` and the delegate set at construction, in one broadcast. The station is permanently ownerless, so `setDelegate`/`pause`/`unpause` can never be called.
+
+```
+forge script script/DeployTKGasDelegateAndStationNoOwner.s.sol:DeployTKGasDelegateAndStationNoOwner --rpc-url <networkName> --broadcast --verify
+```
+
+**Option C — manual scripts**  
+Order matters: station first, then delegate, then link.
+
+1. Deploy `TKGasStation` with `tkGasDelegate` initially unset (`address(0)`):
+
+```
 forge script script/DeployTKGasStation.s.sol:DeployTKGasStation --rpc-url <networkName> --broadcast --verify
-``` 
+```
 
+From the script logs, set **`TK_GAS_STATION`** in `.env` to the deployed station address.
 
-6. Add the contract addresses to the readme
+2. Deploy `TKGasDelegate` with its immutable `GAS_STATION` set to that address (`TK_GAS_STATION` must be set in `.env`):
+
+*Note:*  If you set the delegate to have the gas station as the zero address, it will accept from any gas station
+
+```
+forge script script/DeployTKGasDelegate.s.sol:DeployTKGasDelegate --rpc-url <networkName> --broadcast --verify
+```
+
+Set **`TK_GAS_DELEGATE`** in `.env` to the deployed delegate address.
+
+3. Point the station at the delegate (owner-only; uses both env vars):
+
+```
+forge script script/SetGasStationDelegate.s.sol:SetGasStationDelegate --rpc-url <networkName> --broadcast
+```
+
+After a successful deploy, record the canonical contract addresses for the chain (e.g. in docs or your ops repo).

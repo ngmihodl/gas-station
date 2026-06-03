@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import "forge-std/Script.sol";
 import "forge-std/console2.sol";
 import {TKGasStation} from "../src/TKGasStation/TKGasStation.sol";
 
+/// @custom:security-contact security@turnkey.com
 contract GetInitCodeHash is Script {
     function run() external {
         address _delegate = vm.envAddress("DELEGATE_ADDRESS");
